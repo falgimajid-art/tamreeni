@@ -134,6 +134,13 @@ function openSheet(o) {
     }
   };
   $('[data-x]', wrap).onclick = api.close;
+  // اسحب الترويسة للأسفل لإغلاق النافذة
+  (() => {
+    const head = $('.sheet-head', wrap); let y0 = null, dy = 0;
+    head.addEventListener('touchstart', e => { if (e.target.closest('[data-x]')) return; y0 = e.touches[0].clientY; dy = 0; sh.style.transition = 'none'; }, { passive: true });
+    head.addEventListener('touchmove', e => { if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0); sh.style.transform = `translateY(${dy}px)`; }, { passive: true });
+    head.addEventListener('touchend', () => { if (y0 === null) return; y0 = null; sh.style.transition = 'transform .2s ease'; if (dy > 110) api.close(); else sh.style.transform = ''; });
+  })();
   wrap.addEventListener('click', e => { if (e.target === wrap) api.close(); });
   sheetStack.push(api);
   body.innerHTML = o.body || '';
@@ -151,14 +158,60 @@ function confirmSheet(title, text, okLabel, onOk, danger = true) {
 let tab = 'home';
 const thumb = (id, cls = '') => `<div class="thumb ${cls}"><img src="img/${id}-0.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{innerHTML:figureSvg(exOf('${id}'),0)}))"></div>`;
 
+const TABS = ['home', 'train', 'meas'];
+let navDir = '';
 function render() {
   const v = $('#view');
   const fn = { home: viewHome, train: viewTrain, meas: viewMeas }[tab];
   v.innerHTML = '';
   fn(v);
+  if (navDir) { $('.screen', v)?.classList.add(navDir); navDir = ''; }
   $$('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+  updateResume();
 }
-function go(t) { tab = t; try { sessionStorage.setItem('tab', t); } catch (e) {} render(); window.scrollTo(0, 0); }
+function go(t) {
+  if (t === tab) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; } // الضغط على نفس التبويب = للأعلى
+  navDir = TABS.indexOf(t) > TABS.indexOf(tab) ? 'from-l' : 'from-r';
+  tab = t; render(); window.scrollTo(0, 0);
+}
+/* شريط "تمرين جاري" يظهر فوق الأزرار السفلية عندما تكون مصغّراً التمرين */
+function updateResume() {
+  let el = $('#resume');
+  if (S.activeWorkout && !$('#wk')) {
+    if (!el) { el = document.createElement('button'); el.id = 'resume'; el.className = 'resume'; document.body.appendChild(el); el.onclick = () => openWorkout(); }
+    el.innerHTML = `${ic('play')}<span class="grow"><span>تمرين جاري — متابعة</span><small class="ltr" style="direction:rtl">${esc(S.activeWorkout.dayName)}</small></span>${ic('chevl')}`;
+  } else el?.remove();
+}
+/* سحب يميناً/يساراً للتنقل بين الصفحات (يتجاهل القوائم الأفقية والحقول) */
+(() => {
+  let sx = 0, sy = 0, t0 = 0, ok = false;
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now();
+    ok = e.touches.length === 1 && !sheetStack.length && !$('#wk') && !e.target.closest('.carousel, .chips, .day-tabs, input, textarea, select, .chart, .seg');
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 70 && Math.abs(dy) < 45 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - t0 < 600) {
+      const i = TABS.indexOf(tab) + (dx > 0 ? 1 : -1); // الواجهة من اليمين لليسار
+      if (TABS[i]) go(TABS[i]);
+    }
+  }, { passive: true });
+})();
+
+/* ---------- تغيير الاسم (بزر حفظ واضح) ---------- */
+function openNameSheet() {
+  const s = openSheet({ title: 'اسمك', body: '', foot: '' });
+  s.set(`<div class="field"><label>الاسم الذي يظهر في الرئيسية</label><div class="name-row"><input class="inp" id="nm" value="${esc(S.name)}" placeholder="اكتب اسمك" maxlength="24" autocomplete="off"><button class="btn" id="nm-save" disabled>حفظ</button></div></div>`);
+  wireNameInput(s.body, () => s.close());
+  setTimeout(() => $('#nm', s.body)?.focus(), 320);
+}
+function wireNameInput(root, after) {
+  const inp = $('#nm', root), btn = $('#nm-save', root), orig = S.name || '';
+  const dirty = () => { const v = inp.value.trim(); btn.disabled = !v || v === orig; };
+  const commit = () => { const v = inp.value.trim(); if (!v || v === orig) return; S.name = v; save(); toast('تم حفظ الاسم ✓'); render(); after && after(); };
+  inp.oninput = dirty; btn.onclick = commit; inp.onkeydown = e => { if (e.key === 'Enter') commit(); };
+  dirty();
+}
 
 /* ---------- الرئيسية ---------- */
 function viewHome(v) {
@@ -181,7 +234,7 @@ function viewHome(v) {
   const hello = S.name ? esc(S.name) : 'بطل';
   v.innerHTML = `<div class="screen">
     <div class="topbar">
-      <div class="hello"><div class="avatar">${esc((S.name || 'ب')[0].toUpperCase())}</div><div><small>أهلاً 👋</small><b>${hello}</b></div></div>
+      <button class="hello" id="b-name" aria-label="تغيير الاسم" style="text-align:start"><div class="avatar">${esc((S.name || 'ب')[0].toUpperCase())}</div><div><small>أهلاً 👋</small><b>${hello}</b></div></button>
       <div class="top-actions"><button class="icon-btn" id="b-set">${ic('gear')}</button></div>
     </div>
     <div class="card">
@@ -193,6 +246,12 @@ function viewHome(v) {
       <button class="btn" id="b-start">${ic('play')} ${resume ? 'متابعة التمرين' : 'بدء التمرين'}</button>
       <button class="btn ghost" style="margin-top:8px" id="b-prev">معاينة اليوم</button>
     </div>
+    <div class="quick">
+      <button class="qtile" id="q-train"><span class="qi">${ic('list')}</span><span><b>جداولي</b><small>إدارة وتعديل</small></span></button>
+      <button class="qtile" id="q-lib"><span class="qi">${ic('dumbbell')}</span><span><b>مكتبة التمارين</b><small>${Object.keys(EXERCISES).length} تمرين</small></span></button>
+      <button class="qtile" id="q-stats"><span class="qi">${ic('chart')}</span><span><b>الإحصائيات</b><small>تقدّمك</small></span></button>
+      <button class="qtile" id="q-meas"><span class="qi">${ic('ruler')}</span><span><b>القياسات</b><small>الوزن والجسم</small></span></button>
+    </div>
     <div class="card"><h2>${ic('clock')} أسبوعك</h2><div class="row">${dots}</div></div>
     ${lastLog ? `<div class="card"><h2>${ic('bolt')} آخر جلسة</h2>
       <div class="row between"><div><b>${esc(lastLog.dayName)}</b><div class="small muted">${fWd(lastLog.date)}، ${fDay(lastLog.date)}</div></div>
@@ -203,6 +262,9 @@ function viewHome(v) {
       <div class="muted small">عدد المجموعات لكل عضلة هذا الأسبوع وتطور أوزانك.</div></div>
   </div>`;
   $('#b-set', v).onclick = openSettings;
+  $('#b-name', v).onclick = openNameSheet;
+  $('#q-train', v).onclick = () => go('train'); $('#q-meas', v).onclick = () => go('meas');
+  $('#q-stats', v).onclick = openStats; $('#q-lib', v).onclick = () => openPicker({ title: 'مكتبة التمارين', browse: true });
   $('#b-start', v).onclick = () => startWorkout(p.id, di);
   $('#b-prev', v).onclick = () => openPreview(p.id, di);
   $('#b-addw', v).onclick = () => addWeightSheet();
@@ -429,7 +491,7 @@ function startWorkout(pid, di) {
 }
 function openWorkout() {
   const aw = S.activeWorkout; if (!aw) return;
-  $('#wk')?.remove();
+  $('#wk')?.remove(); $('#resume')?.remove();
   const el = document.createElement('div'); el.className = 'wk'; el.id = 'wk';
   el.innerHTML = `<div class="wk-head"><button class="x-btn" id="wk-min">${ic('chevr', 'lg')}</button>
     <div class="ttl"><b class="ltr">${esc(aw.dayName)}</b><span id="wk-time">0:00</span></div><button class="btn sm" id="wk-fin" style="flex:none">إنهاء</button></div>
@@ -694,7 +756,7 @@ function openEditor(pid) {
 function openSettings() {
   const s = openSheet({ title: 'الإعدادات', body: '' });
   function draw() {
-    s.set(`<div class="field"><label>اسمك</label><input class="inp" id="st-name" value="${esc(S.name)}" placeholder="اكتب اسمك"></div>
+    s.set(`<div class="field"><label>اسمك</label><div class="name-row"><input class="inp" id="nm" value="${esc(S.name)}" placeholder="اكتب اسمك" maxlength="24" autocomplete="off"><button class="btn" id="nm-save" disabled>حفظ</button></div></div>
       <button class="menu-item" id="st-snd">${ic('bolt')}<span class="grow">صوت انتهاء الراحة<small>تنبيه صوتي واهتزاز عند انتهاء العدّاد</small></span><b style="color:${S.settings.sound ? 'var(--accent)' : 'var(--muted)'}">${S.settings.sound ? 'مفعّل' : 'متوقف'}</b></button>
       <button class="menu-item" id="st-exp">${ic('download')}<span>نسخة احتياطية<small>تنزيل ملف بكل بياناتك (احفظه في الملفات)</small></span></button>
       <label class="menu-item" style="cursor:pointer">${ic('upload')}<span>استعادة نسخة<small>اختر ملف النسخة الاحتياطية</small></span><input type="file" id="st-imp" accept="application/json,.json" hidden></label>
@@ -702,7 +764,7 @@ function openSettings() {
       <p class="small muted" style="line-height:1.8;margin-top:14px">بياناتك محفوظة على هذا الجهاز فقط. إذا مسحت بيانات Safari أو حذفت التطبيق ستضيع، فاحتفظ بنسخة احتياطية من وقت لآخر.</p>
       <p class="credit">المصادر: صور التمارين من مشروع free-exercise-db (ترخيص Unlicense، ملك عام). مخططات التشريح العضلي من مشروع wger (ترخيص CC BY-SA 3.0).</p>`);
     const b = s.body;
-    $('#st-name', b).oninput = e => { S.name = e.target.value; save(); };
+    wireNameInput(b, () => draw());
     $('#st-snd', b).onclick = () => { S.settings.sound = !S.settings.sound; save(); if (S.settings.sound) { unlockAudio(); beep(); } draw(); };
     $('#st-exp', b).onclick = () => {
       const blob = new Blob([JSON.stringify(S)], { type: 'application/json' }), a = document.createElement('a');
@@ -720,19 +782,27 @@ function openSettings() {
 
 /* ================= البدء ================= */
 $$('.tab').forEach(t => t.onclick = () => go(t.dataset.tab));
-try { const t = sessionStorage.getItem('tab'); if (t) tab = t; } catch (e) {}
+tab = 'home'; // يفتح دائماً على الرئيسية
 render();
-if (S.activeWorkout) { try { openWorkout(); } catch (e) {} }
+/* موشن الترحيب: ~1.8 ث ثم يكشف الرئيسية. اضغط عليه لتخطيه */
+(() => {
+  const sp = $('#splash'); if (!sp) return;
+  $('#sp-sub').textContent = S.name ? 'أهلاً ' + S.name : 'جاهز للتمرين';
+  let done = false;
+  const hide = () => { if (done) return; done = true; sp.classList.add('out'); setTimeout(() => sp.remove(), 600); if (S.activeWorkout) { try { openWorkout(); } catch (e) {} } };
+  sp.onclick = hide;
+  setTimeout(hide, matchMedia('(prefers-reduced-motion: reduce)').matches ? 500 : 2000);
+})();
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 
 /* ---------- اختيار تمرين: مرتّب حسب العضلة الأساسية، ومعه علامة ! لمعاينة الطريقة ---------- */
-function openPicker({ muscle = '', title = 'اختر تمريناً', onPick }) {
+function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, browse = false }) {
   let q = '', m = muscle, grp = '';
   if (m) grp = (MUSCLE_GROUPS.find(g => g[1].includes(m)) || [''])[0];
   const s = openSheet({ title, tall: true, body: '' });
   const row = e => `<div class="ex-row pick" data-id="${e.id}">
     <button class="pick-main" data-add="${e.id}">${thumb(e.id)}<div class="info"><div class="nm">${esc(e.en)}</div><div class="nm-ar">${esc(e.ar)}</div><div class="meta">${esc(e.gear)}${e.sec.length ? ' · ثانوي: ' + e.sec.slice(0, 2).map(k => MUSCLES[k]).join('، ') : ''}</div></div></button>
-    <button class="info-btn" data-i="${e.id}" aria-label="معاينة طريقة التمرين">!</button></div>`;
+    ${browse ? '' : `<button class="info-btn" data-i="${e.id}" aria-label="معاينة طريقة التمرين">!</button>`}</div>`;
   function draw() {
     const match = e => !q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase());
     const groups = MUSCLE_GROUPS.filter(g => !grp || g[0] === grp);
@@ -746,13 +816,13 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick }) 
     s.body.innerHTML = `<div class="row" style="margin-bottom:10px"><div class="search">${ic('search')}<input id="pq" placeholder="ابحث عن تمرين" value="${esc(q)}"></div></div>
       <div class="chips"><button class="chip ${!grp ? 'on' : ''}" data-g="">الكل</button>${MUSCLE_GROUPS.map(g => `<button class="chip ${grp === g[0] ? 'on' : ''}" data-g="${g[0]}">${g[0]}</button>`).join('')}</div>
       ${musOfGrp.length > 1 ? `<div class="chips"><button class="chip sm ${!m ? 'on' : ''}" data-m="">كل ${grp}</button>${musOfGrp.map(k => `<button class="chip sm ${m === k ? 'on' : ''}" data-m="${k}">${MUSCLES[k]}</button>`).join('')}</div>` : ''}
-      <p class="small muted" style="margin:2px 2px 10px">كل تمرين يظهر تحت عضلته الأساسية. اضغط <b class="info-hint">!</b> لمعاينة طريقة التمرين قبل إضافته.</p>
+      <p class="small muted" style="margin:2px 2px 10px">${browse ? 'كل تمرين تحت عضلته الأساسية. اضغط التمرين لرؤية طريقته وروابط الشرح.' : 'كل تمرين يظهر تحت عضلته الأساسية. اضغط <b class="info-hint">!</b> لمعاينة طريقة التمرين قبل إضافته.'}</p>
       ${html || '<div class="empty">ما فيه نتائج</div>'}`;
     const inp = $('#pq', s.body);
     inp.oninput = () => { q = inp.value; const pos = inp.selectionStart; draw(); const n = $('#pq', s.body); n.focus(); n.setSelectionRange(pos, pos); };
     $$('[data-g]', s.body).forEach(b => b.onclick = () => { grp = b.dataset.g; m = ''; draw(); });
     $$('[data-m]', s.body).forEach(b => b.onclick = () => { m = b.dataset.m; draw(); });
-    $$('[data-add]', s.body).forEach(b => b.onclick = () => { s.close(); onPick(b.dataset.add); });
+    $$('[data-add]', s.body).forEach(b => b.onclick = () => { if (browse) return openExercise(b.dataset.add); s.close(); onPick(b.dataset.add); });
     $$('[data-i]', s.body).forEach(b => b.onclick = () => openExercise(b.dataset.i, 'info', { onAdd: () => { s.close(); onPick(b.dataset.i); } }));
   }
   draw();
