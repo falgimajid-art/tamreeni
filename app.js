@@ -157,7 +157,7 @@ function confirmSheet(title, text, okLabel, onOk, danger = true) {
 
 /* ================= الواجهة الرئيسية ================= */
 let tab = 'home';
-const thumb = (id, cls = '') => `<div class="thumb ${cls}"><img src="img/${id}-0.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{innerHTML:figureSvg(exOf('${id}'),0)}))"></div>`;
+const thumb = (id, cls = '') => `<div class="thumb ${cls}"><img src="img/${(EXERCISES[id] || {}).img || id}-0.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{innerHTML:figureSvg(exOf('${id}'),0)}))"></div>`;
 
 const TABS = ['home', 'train', 'meas'];
 let navDir = '';
@@ -430,6 +430,7 @@ function openExercise(id, start = 'info', opts = {}) {
     if (t === 'info') {
       html += `<div class="fig-card" id="fig"></div><div class="small muted" style="margin:-4px 0 10px">${esc(ex.ar)} · ${esc(ex.gear)}</div>
         <p class="desc">${esc(ex.desc)}</p>
+        ${ex.brand ? `<p class="small muted" style="margin:-6px 0 14px;line-height:1.7">الصور توضيحية لجهاز مشابه (لا نستخدم صور ${ex.brand} الأصلية). شكل الجهاز عندك قد يختلف قليلاً، واضبط المقعد والمقابض حسب جسمك.</p>` : ''}
         <div class="yt">${ytLinks(ex).map(l => `<a href="${l.url}" target="_blank" rel="noopener"><span class="play"></span>${l.label}</a>`).join('')}</div>
         <div class="body-card">${anatomyHtml(ex.pri, ex.sec)}</div>
         ${ex.pri.map(m => `<div class="mrow"><div class="mi"><span class="dot"></span></div><div class="grow"><b>${MUSCLES[m]}</b><div class="small muted">رئيسية</div></div></div>`).join('')}
@@ -817,7 +818,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
     <button class="pick-main" data-add="${e.id}">${thumb(e.id)}<div class="info"><div class="nm">${esc(e.en)}</div><div class="nm-ar">${esc(e.ar)}</div><div class="meta">${esc(e.gear)}${e.sec.length ? ' · ثانوي: ' + e.sec.slice(0, 2).map(k => MUSCLES[k]).join('، ') : ''}</div></div></button>
     ${browse ? '' : `<button class="info-btn" data-i="${e.id}" aria-label="معاينة طريقة التمرين">!</button>`}</div>`;
   function draw() {
-    const match = e => (!q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase())) && (!gearF || e.gear === gearF);
+    const match = e => (!q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase())) && (!gearF || (gearF === 'Technogym' ? e.brand === 'Technogym' : e.gear === gearF));
     const groups = MUSCLE_GROUPS.filter(g => !grp || g[0] === grp);
     let html = '';
     groups.forEach(([gn, ms]) => ms.filter(k => !m || k === m).forEach(k => {
@@ -828,7 +829,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
     const musOfGrp = grp ? MUSCLE_GROUPS.find(g => g[0] === grp)[1] : [];
     s.body.innerHTML = `<div class="row" style="margin-bottom:10px"><div class="search">${ic('search')}<input id="pq" placeholder="ابحث عن تمرين" value="${esc(q)}"></div></div>
       <div class="chips"><button class="chip ${!grp ? 'on' : ''}" data-g="">الكل</button>${MUSCLE_GROUPS.map(g => `<button class="chip ${grp === g[0] ? 'on' : ''}" data-g="${g[0]}">${g[0]}</button>`).join('')}</div>
-      <div class="chips">${['', 'جهاز', 'دمبل', 'بار', 'كيبل', 'سميث', 'وزن الجسم'].map(g => `<button class="chip sm gear ${gearF === g ? 'on' : ''}" data-gf="${g}">${g || 'كل الأدوات'}</button>`).join('')}</div>
+      <div class="chips">${['', 'Technogym', 'جهاز', 'دمبل', 'بار', 'كيبل', 'سميث', 'وزن الجسم'].map(g => `<button class="chip sm gear ${gearF === g ? 'on' : ''}" data-gf="${g}">${g || 'كل الأدوات'}</button>`).join('')}</div>
       ${musOfGrp.length > 1 ? `<div class="chips"><button class="chip sm ${!m ? 'on' : ''}" data-m="">كل ${grp}</button>${musOfGrp.map(k => `<button class="chip sm ${m === k ? 'on' : ''}" data-m="${k}">${MUSCLES[k]}</button>`).join('')}</div>` : ''}
       <p class="small muted" style="margin:2px 2px 10px">${browse ? 'كل تمرين تحت عضلته الأساسية. اضغط التمرين لرؤية طريقته وروابط الشرح.' : 'كل تمرين يظهر تحت عضلته الأساسية. اضغط <b class="info-hint">!</b> لمعاينة طريقة التمرين قبل إضافته.'}</p>
       ${html || '<div class="empty">ما فيه نتائج</div>'}`;
@@ -846,7 +847,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
 /* صور التمرين الحقيقية: صورتان (بداية/نهاية) تتبدلان كحركة، وإن لم تتوفر نرجع للرسم */
 function animatePhoto(host, ex) {
   const a = new Image(), b = new Image();
-  a.src = `img/${ex.id}-0.jpg`; b.src = `img/${ex.id}-1.jpg`; b.className = 'b';
+  a.src = `img/${ex.img || ex.id}-0.jpg`; b.src = `img/${ex.img || ex.id}-1.jpg`; b.className = 'b';
   a.onerror = () => animateFigure(host, ex);
   host.innerHTML = ''; host.appendChild(a); host.appendChild(b);
 }

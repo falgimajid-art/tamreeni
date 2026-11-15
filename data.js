@@ -211,7 +211,36 @@ const EX_RAW = [
   ['db-side-bend','Dumbbell Side Bend','ميلان جانبي بالدمبل','crunch','i','دمبل','abs','lower_back','قف وأمسك دمبلاً بيد واحدة وأمِل الجذع للجانب ثم ارجع بقوة البطن الجانبية. بدون التفاف.'],
   ['bent-pullover','Bent-Arm Dumbbell Pullover','بولأوفر بثني الذراع','bench','i','دمبل','lats','chest,triceps','استلقِ على البنش وأنزل الدمبل خلف الرأس بذراعين مثنيتين قليلاً ثم اسحبه فوق الصدر.'],
   ['db-fly-decline','Decline Dumbbell Flyes','فلاي صدر سفلي بالدمبل','bench','i','دمبل','chest','front_delt','على بنش مائل للأسفل افتح الدمبلين بقوس واسع ثم اجمعهما فوق أسفل الصدر.'],
-  ['db-rear-lying','Lying Rear Delt Raise','رفرفة خلفية مستلقياً','rear_fly','i','دمبل','rear_delt','upper_back','استلقِ على صدرك على بنش مائل وارفع الدمبلين جانباً حتى مستوى الكتف ثم انزل ببطء.']
+  ['db-rear-lying','Lying Rear Delt Raise','رفرفة خلفية مستلقياً','rear_fly','i','دمبل','rear_delt','upper_back','استلقِ على صدرك على بنش مائل وارفع الدمبلين جانباً حتى مستوى الكتف ثم انزل ببطء.'],
+
+  /* أجهزة Technogym (خط Selection المعدني بالأوزان، وPure Strength بالأقراص).
+     العنصر العاشر: اسم صورة توضيحية لجهاز مشابه من المصدر المفتوح (لا نستخدم صور Technogym الأصلية). */
+  ['tg-chest-press','Technogym Chest Press','ضغط صدر — Technogym','machine_press','c','جهاز','chest','front_delt,triceps','اضبط ارتفاع المقعد ليكون المقبضان بمستوى منتصف الصدر، وضع دبوس الأوزان على الثقل المناسب. ادفع للأمام حتى استقامة الذراعين تقريباً ثم ارجع ببطء بدون ترك الأوزان تضرب.','machine-chest'],
+  ['tg-incline-press','Technogym Incline Press (Pure Strength)','ضغط صدر علوي — Technogym','incline','c','جهاز','chest','front_delt,triceps','جهاز الأقراص المائل: ضع الأقراص على الأذرع، واجلس بظهر ثابت ثم ادفع للأعلى وللأمام وارجع ببطء. يركز على أعلى الصدر.','machine-incline-press'],
+  ['tg-pectoral','Technogym Pectoral (Pec Fly)','فلاي صدر — Technogym Pectoral','pec_deck','i','جهاز','chest','front_delt','اضبط المقعد ليكون الكوعان بمستوى الكتف. اجمع الذراعين أمام الصدر ثم افتحهما ببطء حتى تشعر بتمدد الصدر دون تجاوز مدى الراحة.','pec-deck'],
+  ['tg-shoulder-press','Technogym Shoulder Press','ضغط كتف — Technogym','ohp_seated','c','جهاز','front_delt','side_delt,triceps','اضبط المقعد ليكون المقبضان بمستوى الكتف. ادفع للأعلى حتى قرب الاستقامة ثم انزل بتحكم، وأبقِ الظهر ملتصقاً بالمسند.','machine-shoulder'],
+  ['tg-lateral-raise','Technogym Lateral Raise','رفرفة جانبية — Technogym','lateral','i','جهاز','side_delt','','اجلس وضع الكوعين على الوسادتين. ارفع الذراعين للجانب حتى مستوى الكتف ثم انزل ببطء. لا ترفع الكتفين نحو الأذنين.','machine-lateral'],
+  ['tg-pulldown','Technogym Pulldown','سحب علوي — Technogym','pulldown','c','جهاز','lats','biceps,upper_back','ثبّت فخذيك تحت الوسادة. اسحب المقبض إلى أعلى الصدر مع إنزال الكوعين للأسفل ثم ارجع بتحكم. لا تتأرجح بالجذع.','lat-pulldown'],
+  ['tg-assistant','Technogym Assistant (Assisted Pull-up/Dip)','عقلة/متوازي بمساعدة — Technogym','pullup','c','جهاز','lats','biceps,upper_back,triceps','اركع على المنصة واضبط الوزن المساعد (كل ما زاد الوزن صار أسهل). اسحب نفسك للأعلى بالعقلة ثم انزل ببطء. ممتاز للمبتدئين.','pullup'],
+  ['tg-low-row','Technogym Low Row','تجديف سفلي — Technogym','row_seated','c','جهاز','upper_back','lats,biceps,rear_delt','أسند صدرك على الوسادة وامسك المقبضين. اسحب للخلف مع ضم لوحي الكتف ثم ارجع ببطء مع تمدد الظهر.','cable-row'],
+  ['tg-upper-back','Technogym Upper Back','ظهر علوي — Technogym','row_seated','c','جهاز','upper_back','lats,rear_delt,biceps','اجلس مع إسناد الصدر واسحب المقبضين العاليين نحو الجسم مع عصر لوحي الكتف. يركز على منتصف وأعلى الظهر.','high-row'],
+  ['tg-pullover','Technogym Pullover (Pure Strength)','بولأوفر — Technogym','straight_arm','i','جهاز','lats','chest,triceps','اجلس وضع الكوعين على الوسادتين. اسحب الذراعين من فوق الرأس إلى الأسفل بقوة اللاتس ثم ارجع ببطء مع تمدد كامل.','straight-arm'],
+  ['tg-arm-curl','Technogym Arm Curl (Biceps)','باي — Technogym Arm Curl','preacher','i','جهاز','biceps','forearms','اضبط المقعد ليكون الكوعان بمحاذاة محور الجهاز. اثنِ الذراعين نحو الكتفين وثبّت لحظة ثم انزل ببطء.','machine-curl'],
+  ['tg-arm-extension','Technogym Arm Extension (Triceps)','تراي — Technogym Arm Extension','pushdown','i','جهاز','triceps','','ثبّت الكوعين على الوسادة وافرد الذراعين حتى النهاية مع عصر التراي ثم ارجع ببطء.','machine-tri-ext'],
+  ['tg-dip','Technogym Dip','متوازي — Technogym','dips','c','جهاز','triceps','chest,front_delt','اجلس وادفع المقبضين للأسفل حتى استقامة الذراعين ثم ارجع ببطء. أبقِ الكوعين قريبين من الجسم لتركز على التراي.','dip-machine'],
+  ['tg-rotary-torso','Technogym Rotary Torso','لف الجذع — Technogym Rotary Torso','crunch','i','جهاز','abs','lower_back','ثبّت الحوض والركبتين، ولف الجذع للجانب بتحكم بقوة البطن الجانبية ثم عُد للمنتصف. استخدم وزناً خفيفاً وحركة بطيئة.','russian-twist'],
+  ['tg-abdominal','Technogym Abdominal Crunch','كرانش بطن — Technogym','crunch','i','جهاز','abs','','اجلس وضع القدمين خلف الوسادات وامسك المقبضين. اثنِ الجذع للأمام بتقصير البطن ثم ارجع ببطء. لا تسحب بالذراعين.','ab-machine'],
+  ['tg-lower-back','Technogym Lower Back','أسفل الظهر — Technogym','hyperext','i','جهاز','lower_back','glutes,hamstrings','اجلس وثبّت الحوض والركبتين، ثم مدّد الجذع للخلف بتحكم حتى الاستقامة وارجع ببطء. استخدم وزناً خفيفاً وحركة صغيرة.','hyperext'],
+  ['tg-leg-press','Technogym Leg Press','ضغط أرجل — Technogym','legpress','c','جهاز','quads','glutes,hamstrings','اضبط المقعد لتكون الركبتان بزاوية 90 درجة تقريباً. ادفع المنصة بالكعبين دون قفل الركبتين بقوة ثم ارجع ببطء.','leg-press'],
+  ['tg-leg-extension','Technogym Leg Extension','رفرفة أمامية — Technogym','leg_ext','i','جهاز','quads','','اضبط الوسادة فوق الكاحلين وظهر المقعد لتكون الركبتان عند حافته. افرد الركبتين ثم انزل ببطء.','leg-ext'],
+  ['tg-leg-curl-lying','Technogym Leg Curl (Lying)','ثني أرجل مستلقياً — Technogym','leg_curl','i','جهاز','hamstrings','calves','استلقِ على الجهاز وثبّت الوسادة خلف الكاحلين. اثنِ الركبتين نحو الأرداف ثم انزل ببطء.','lying-curl'],
+  ['tg-leg-curl-seated','Technogym Leg Curl (Seated)','ثني أرجل جالساً — Technogym','seated_curl','i','جهاز','hamstrings','calves','اجلس وثبّت الوسادة فوق الفخذين وخلف الكاحلين. اسحب الكعبين للأسفل ثم ارجع ببطء.','seated-curl'],
+  ['tg-adductor','Technogym Adductor','تقريب الورك — Technogym Adductor','leg_ext','i','جهاز','adductors','glutes','اجلس واضبط نطاق الحركة، ثم قرّب الوسادتين بالفخذين الداخليين وارجع ببطء. لا تستخدم دفع الظهر.','hip-adduction'],
+  ['tg-abductor','Technogym Abductor','إبعاد الورك — Technogym Abductor','leg_ext','i','جهاز','glutes','','اجلس وادفع الوسادتين للخارج بالركبتين ثم ارجع ببطء. يقوّي الألية الوسطى والجانبية.','hip-abduction'],
+  ['tg-glute','Technogym Glute','أرداف — Technogym Glute','lunge','i','جهاز','glutes','hamstrings','اسند صدرك وادفع الوسادة للخلف بالكعب مع عصر الأرداف ثم ارجع ببطء. لا تقوّس أسفل الظهر.','kickback'],
+  ['tg-calf','Technogym Calf (Standing)','بطات — Technogym','calf','i','جهاز','calves','','قف على حافة المنصة تحت الوسادات وارفع الكعبين قدر الإمكان ثم انزل حتى تمدد كامل.','calf-raise'],
+  ['tg-pure-squat','Technogym Pure Strength Squat','سكوات — Technogym Pure Strength','squat','c','جهاز','quads','glutes,hamstrings','جهاز أقراص: ضع الكتفين تحت الوسادات والقدمين بعرض الكتفين. انزل حتى توازي الفخذين الأرض ثم قف.','hack-squat'],
+  ['tg-pure-row','Technogym Pure Strength Row','تجديف — Technogym Pure Strength','row_bent','c','جهاز','upper_back','lats,biceps','أسند صدرك على الوسادة واسحب المقبضين نحو الجسم مع ضم لوحي الكتف ثم ارجع ببطء. جهاز أقراص بحمل مستقل لكل ذراع.','lying-tbar']
 ];
 
 const EXERCISES = {};
@@ -219,7 +248,7 @@ EX_RAW.forEach(r => {
   EXERCISES[r[0]] = {
     id: r[0], en: r[1], ar: r[2], kind: r[3], type: r[4] === 'c' ? 'compound' : 'iso', gear: r[5],
     pri: r[6].split(',').filter(Boolean), sec: r[7].split(',').filter(Boolean), desc: r[8],
-    bw: r[5] === 'وزن الجسم'
+    bw: r[5] === 'وزن الجسم', img: r[9] || r[0], brand: /^Technogym/.test(r[1]) ? 'Technogym' : ''
   };
 });
 
