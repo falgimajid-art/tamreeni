@@ -35,6 +35,7 @@ const ICONS = {
   arrowr: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   more: '<circle cx="5" cy="12" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="19" cy="12" r="1.2" fill="currentColor"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+  grip: '<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></g>',
   home2: '<path d="M4 20V9l8-5 8 5v11zM9 20v-6h6v6"/>'
 };
 const ic = (n, c = '') => `<svg class="ico ${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
@@ -383,10 +384,11 @@ function openPreview(pid, di) {
       <div class="chips">${pri.map(m => `<span class="chip mus">${MUSCLES[m]}</span>`).join('')}${sec.map(m => `<span class="chip mus dim">${MUSCLES[m]}</span>`).join('')}</div>
       <div class="stats3" style="margin-bottom:16px;background:var(--surface)"><div><b>${cnt}</b><span>جلسات</span></div><div><b>${exs.length}</b><span>تمارين</span></div><div><b>~${mins} د</b><span>متوقعة</span></div></div>
       <div class="row between" style="margin-bottom:10px"><b class="ltr">${esc(p.days[di].name)}</b><button class="link" id="pv-ed">${edit ? 'تم' : 'تعديل اليوم'}</button></div>
-      ${exs.map((e, i) => { const ex = exOf(e[0]), last = lastSets(e[0]), b = last && bestOf(last); return `<div class="ex-row" data-i="${i}">${thumb(e[0])}
+      <div id="pv-list">${exs.map((e, i) => { const ex = exOf(e[0]), last = lastSets(e[0]), b = last && bestOf(last); return `<div class="ex-row" data-i="${i}">${edit ? `<button class="grip" data-grip aria-label="اسحب لتغيير الترتيب">${ic('grip')}</button>` : ''}${thumb(e[0])}
         <div class="info" data-info="${e[0]}"><div class="nm">${esc(ex.en)}</div><div class="nm-ar">${esc(ex.ar)}</div><div class="meta ltr" style="direction:rtl">${e[2]} × ${e[1]}، راحة ${fmtTime(e[3])} د${b ? `<br>آخر مرة: ${setTxt(b)}` : ''}</div></div>
-        ${edit ? `<div class="row" style="gap:4px"><button class="icon-btn" data-up="${i}" style="width:34px;height:34px">${ic('up', 'sm')}</button><button class="icon-btn" data-rm="${i}" style="width:34px;height:34px;color:var(--rose)">${ic('trash', 'sm')}</button></div>` : ''}
-        <button class="swap" data-sw="${i}">${ic('swap', 'sm')} استبدال</button></div>`; }).join('')}
+        ${edit ? `<button class="icon-btn" data-rm="${i}" style="width:34px;height:34px;color:var(--rose)">${ic('trash', 'sm')}</button>` : ''}
+        <button class="swap" data-sw="${i}">${ic('swap', 'sm')} استبدال</button></div>`; }).join('')}</div>
+      ${edit ? `<p class="small muted" style="margin:2px 2px 10px">اسحب المقبض ${ic('grip', 'sm')} لتحريك التمرين وتغيير ترتيبه.</p>` : ''}
       ${edit ? `<button class="btn ghost" id="pv-add" style="margin-top:6px">${ic('plus')} إضافة تمرين</button>` : ''}`);
     const b = s.body;
     $('#pv-ed', b).onclick = () => { edit = !edit; draw(); };
@@ -394,7 +396,7 @@ function openPreview(pid, di) {
     const setOv = arr => { S.overrides[pid + ':' + di] = arr; save(); draw(); render(); };
     $$('[data-sw]', b).forEach(x => x.onclick = () => { const i = +x.dataset.sw; openPicker({ muscle: exOf(exs[i][0]).pri[0], title: 'استبدال التمرين', onPick: id => { const a = exs.map(r => r.slice()); a[i][0] = id; setOv(a); } }); });
     $$('[data-rm]', b).forEach(x => x.onclick = () => { if (exs.length <= 1) return toast('لازم يبقى تمرين واحد'); setOv(exs.filter((_, i) => i !== +x.dataset.rm)); });
-    $$('[data-up]', b).forEach(x => x.onclick = () => { const i = +x.dataset.up; if (i < 1) return; const a = exs.slice(); [a[i - 1], a[i]] = [a[i], a[i - 1]]; setOv(a); });
+    if (edit) makeSortable($('#pv-list', b), '.ex-row', '[data-grip]', order => setOv(order.map(i => exs[i])));
     $('#pv-add', b)?.addEventListener('click', () => openPicker({ title: 'إضافة تمرين', onPick: id => setOv([...exs, [id, 3, '8-12', exOf(id).type === 'compound' ? 120 : 75]]) }));
   }
   draw();
@@ -494,12 +496,13 @@ function openWorkout() {
   $('#wk')?.remove(); $('#resume')?.remove();
   const el = document.createElement('div'); el.className = 'wk'; el.id = 'wk';
   el.innerHTML = `<div class="wk-head"><button class="x-btn" id="wk-min">${ic('chevr', 'lg')}</button>
-    <div class="ttl"><b class="ltr">${esc(aw.dayName)}</b><span id="wk-time">0:00</span></div><button class="btn sm" id="wk-fin" style="flex:none">إنهاء</button></div>
+    <div class="ttl"><b class="ltr">${esc(aw.dayName)}</b><span id="wk-time">0:00</span></div><button class="icon-btn" id="wk-ord" aria-label="ترتيب التمارين" style="flex:none">${ic('list')}</button><button class="btn sm" id="wk-fin" style="flex:none">إنهاء</button></div>
     <div class="wk-body" id="wk-body"></div><div id="wk-rest"></div>`;
   document.body.appendChild(el); document.body.style.overflow = 'hidden';
   try { navigator.wakeLock?.request('screen').then(w => wakeLock = w).catch(() => {}); } catch (e) {}
   $('#wk-min', el).onclick = closeWorkoutView;
   $('#wk-fin', el).onclick = finishWorkout;
+  $('#wk-ord', el).onclick = openWorkoutOrder;
   drawWorkout();
   clearInterval(tick); tick = setInterval(onTick, 250); onTick();
 }
@@ -513,7 +516,8 @@ function drawWorkout() {
     const ex = exOf(e.id), last = lastSets(e.id), done = e.sets.every(s => s.done);
     return `<div class="wk-ex ${done ? 'done' : ''}"><div class="hd" data-xi="${xi}">${thumb(e.id)}
       <div class="grow"><div class="nm">${esc(ex.en)}</div><div class="small muted">${e.n} × ${esc(e.reps)} · راحة ${fmtTime(e.rest)} د</div>${last ? `<div class="small muted ltr" style="direction:rtl">آخر مرة: ${setTxt(bestOf(last))}</div>` : ''}</div>
-      <button class="icon-btn" data-info="${e.id}" style="width:38px;height:38px">${ic('chart', 'sm')}</button></div>
+      <button class="icon-btn" data-swx="${xi}" aria-label="استبدال التمرين" style="width:38px;height:38px">${ic('swap', 'sm')}</button>
+      <button class="icon-btn" data-info="${e.id}" aria-label="شرح التمرين" style="width:38px;height:38px">${ic('chart', 'sm')}</button></div>
       <div class="setgrid"><span class="h">#</span><span class="h">الوزن kg</span><span class="h">التكرار</span><span class="h">RIR</span><span></span>
       ${e.sets.map((s, si) => {
         const pv = last ? (last[si] || last[last.length - 1]) : null, lo = parseInt(e.reps) || '';
@@ -530,6 +534,7 @@ function drawWorkout() {
   $$('[data-chk]', body).forEach(b => b.onclick = () => { const [xi, si] = b.dataset.chk.split(':').map(Number); toggleSet(xi, si); });
   $$('[data-add]', body).forEach(b => b.onclick = () => { aw.ex[b.dataset.add].sets.push({ w: '', r: '', rir: '', done: false }); save(); drawWorkout(); });
   $$('[data-info]', body).forEach(b => b.onclick = () => openExercise(b.dataset.info));
+  $$('[data-swx]', body).forEach(b => b.onclick = () => swapWorkoutExercise(+b.dataset.swx));
 }
 function toggleSet(xi, si) {
   unlockAudio();
@@ -724,8 +729,8 @@ function openEditor(pid) {
       <div class="row" style="margin-bottom:14px"><select class="inp" id="ed-lvl">${['مبتدئ', 'متوسط', 'متقدم'].map(x => `<option ${wc.level === x ? 'selected' : ''}>${x}</option>`).join('')}</select><select class="inp" id="ed-pl">${['النادي', 'المنزل'].map(x => `<option ${wc.place === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
       <div class="day-tabs">${wc.days.map((x, i) => `<button data-d="${i}" class="${i === di ? 'on' : ''}">${esc(x.name) || 'يوم ' + (i + 1)}</button>`).join('')}<button data-d="add">+ يوم</button></div>
       <div class="row" style="margin-bottom:12px"><input class="inp" id="ed-dn" value="${esc(d.name)}" placeholder="اسم اليوم">${wc.days.length > 1 ? `<button class="icon-btn" id="ed-dd" style="color:var(--rose);flex:none">${ic('trash', 'sm')}</button>` : ''}</div>
-      ${d.ex.map((e, i) => { const ex = exOf(e[0]); return `<div class="ex-row">${thumb(e[0])}<div class="info"><div class="nm">${esc(ex.en)}</div><div class="row" style="margin-top:6px;gap:6px"><input class="mini-in" data-f="1" data-i="${i}" value="${e[1]}" inputmode="numeric"><span class="muted">×</span><input class="mini-in" style="width:70px" data-f="2" data-i="${i}" value="${esc(e[2])}"><span class="muted small">راحة</span><input class="mini-in" data-f="3" data-i="${i}" value="${e[3]}" inputmode="numeric"></div></div>
-        <div style="display:grid;gap:4px"><button class="icon-btn" data-u="${i}" style="width:32px;height:32px">${ic('up', 'sm')}</button><button class="icon-btn" data-r="${i}" style="width:32px;height:32px;color:var(--rose)">${ic('trash', 'sm')}</button></div></div>`; }).join('')}
+      <div id="ed-list">${d.ex.map((e, i) => { const ex = exOf(e[0]); return `<div class="ex-row" data-i="${i}"><button class="grip" data-grip aria-label="اسحب لتغيير الترتيب">${ic('grip')}</button>${thumb(e[0])}<div class="info"><div class="nm">${esc(ex.en)}</div><div class="row" style="margin-top:6px;gap:6px"><input class="mini-in" data-f="1" data-i="${i}" value="${e[1]}" inputmode="numeric"><span class="muted">×</span><input class="mini-in" style="width:70px" data-f="2" data-i="${i}" value="${esc(e[2])}"><span class="muted small">راحة</span><input class="mini-in" data-f="3" data-i="${i}" value="${e[3]}" inputmode="numeric"></div></div>
+        <button class="icon-btn" data-r="${i}" style="width:36px;height:36px;color:var(--rose)">${ic('trash', 'sm')}</button></div>`; }).join('')}</div>
       <button class="btn ghost" id="ed-add">${ic('plus')} إضافة تمرين</button>
       <p class="small muted" style="margin-top:8px">الصيغة: مجموعات × تكرارات، وقت الراحة بالثواني.</p>`);
     const b = s.body;
@@ -735,7 +740,7 @@ function openEditor(pid) {
     $$('[data-d]', b).forEach(x => x.onclick = () => { if (x.dataset.d === 'add') { wc.days.push({ name: 'اليوم ' + (wc.days.length + 1), ex: [] }); di = wc.days.length - 1; } else di = +x.dataset.d; draw(); });
     $('#ed-dd', b)?.addEventListener('click', () => { wc.days.splice(di, 1); di = Math.max(0, di - 1); draw(); });
     $$('input[data-f]', b).forEach(x => x.oninput = () => { const f = +x.dataset.f; d.ex[x.dataset.i][f] = f === 2 ? x.value : (parseInt(x.value) || (f === 1 ? 1 : 60)); });
-    $$('[data-u]', b).forEach(x => x.onclick = () => { const i = +x.dataset.u; if (i > 0) { [d.ex[i - 1], d.ex[i]] = [d.ex[i], d.ex[i - 1]]; draw(); } });
+    makeSortable($('#ed-list', b), '.ex-row', '[data-grip]', order => { d.ex = order.map(i => d.ex[i]); draw(); });
     $$('[data-r]', b).forEach(x => x.onclick = () => { d.ex.splice(+x.dataset.r, 1); draw(); });
     $('#ed-add', b).onclick = () => openPicker({ title: 'إضافة تمرين', onPick: id => { d.ex.push([id, 3, '8-12', exOf(id).type === 'compound' ? 120 : 75]); draw(); } });
   }
