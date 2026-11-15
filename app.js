@@ -518,20 +518,28 @@ function drawWorkout() {
       <div class="grow"><div class="nm">${esc(ex.en)}</div><div class="small muted">${e.n} × ${esc(e.reps)} · راحة ${fmtTime(e.rest)} د</div>${last ? `<div class="small muted ltr" style="direction:rtl">آخر مرة: ${setTxt(bestOf(last))}</div>` : ''}</div>
       <button class="icon-btn" data-swx="${xi}" aria-label="استبدال التمرين" style="width:38px;height:38px">${ic('swap', 'sm')}</button>
       <button class="icon-btn" data-info="${e.id}" aria-label="شرح التمرين" style="width:38px;height:38px">${ic('chart', 'sm')}</button></div>
-      <div class="setgrid"><span class="h">#</span><span class="h">الوزن kg</span><span class="h">التكرار</span><span class="h">RIR</span><span></span>
+      <div class="setgrid"><span class="h">#</span><span class="h">الوزن kg</span><span class="h">التكرار</span><span class="h">RIR</span><span></span><span></span>
       ${e.sets.map((s, si) => {
         const pv = last ? (last[si] || last[last.length - 1]) : null, lo = parseInt(e.reps) || '';
         return `${`<span class="numdot" style="margin:auto">${si + 1}</span>`}
         <div class="${s.done ? 'done' : ''}"><input inputmode="decimal" data-f="w" data-xi="${xi}" data-si="${si}" value="${esc(s.w)}" placeholder="${pv ? fmtN(pv.w) : (ex.bw ? '0' : '-')}"></div>
         <div class="${s.done ? 'done' : ''}"><input inputmode="numeric" data-f="r" data-xi="${xi}" data-si="${si}" value="${esc(s.r)}" placeholder="${pv ? fmtN(pv.r) : lo}"></div>
         <div class="${s.done ? 'done' : ''}"><input inputmode="numeric" data-f="rir" data-xi="${xi}" data-si="${si}" value="${esc(s.rir)}" placeholder="-"></div>
-        <button class="chk ${s.done ? 'on' : ''}" data-chk="${xi}:${si}">${ic('check')}</button>`;
+        <button class="chk ${s.done ? 'on' : ''}" data-chk="${xi}:${si}" aria-label="إنجاز المجموعة">${ic('check')}</button>
+        <button class="del-set" data-delset="${xi}:${si}" aria-label="حذف المجموعة" ${e.sets.length <= 1 ? 'disabled' : ''}>${ic('trash', 'sm')}</button>`;
       }).join('')}</div>
       <button class="add-set" data-add="${xi}">+ إضافة مجموعة</button></div>`;
   }).join('');
   body.scrollTop = y;
   $$('input[data-f]', body).forEach(inp => inp.oninput = () => { const s = aw.ex[inp.dataset.xi].sets[inp.dataset.si]; s[inp.dataset.f] = inp.value; save(); });
   $$('[data-chk]', body).forEach(b => b.onclick = () => { const [xi, si] = b.dataset.chk.split(':').map(Number); toggleSet(xi, si); });
+  $$('[data-delset]', body).forEach(b => b.onclick = () => {
+    const [xi, si] = b.dataset.delset.split(':').map(Number), e = aw.ex[xi];
+    if (e.sets.length <= 1) return toast('لازم تبقى مجموعة واحدة');
+    e.sets.splice(si, 1); e.n = e.sets.length;
+    if (aw.rest && e.sets.every(q => q.done) && aw.ex.every(x => x.sets.every(q => q.done))) aw.rest = null;
+    save(); drawWorkout(); toast('تم حذف المجموعة');
+  });
   $$('[data-add]', body).forEach(b => b.onclick = () => { aw.ex[b.dataset.add].sets.push({ w: '', r: '', rir: '', done: false }); save(); drawWorkout(); });
   $$('[data-info]', body).forEach(b => b.onclick = () => openExercise(b.dataset.info));
   $$('[data-swx]', body).forEach(b => b.onclick = () => swapWorkoutExercise(+b.dataset.swx));

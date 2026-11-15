@@ -170,7 +170,9 @@ svg.body .m.s { fill: rgba(134,184,168,.38); stroke: none; }
 .wk-ex.done { opacity: .62; }
 .wk-ex .hd { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .wk-ex .hd .nm { font-weight: 700; font-size: 16px; direction: ltr; unicode-bidi: plaintext; text-align: start; }
-.setgrid { display: grid; grid-template-columns: 30px 1fr 1fr 54px 44px; gap: 8px; align-items: center; text-align: center; }
+.del-set { width: 32px; height: 44px; display: grid; place-items: center; color: var(--rose); opacity: .75; border-radius: 10px; }
+.del-set:active { background: var(--rose-soft); } .del-set[disabled] { opacity: .2; pointer-events: none; }
+.setgrid { display: grid; grid-template-columns: 26px 1fr 1fr 48px 44px 32px; gap: 6px; align-items: center; text-align: center; }
 .setgrid .h { font-size: 12px; color: var(--muted); }
 .setgrid input { width: 100%; background: var(--surface2); border: 1.5px solid transparent; border-radius: 12px; padding: 11px 4px; text-align: center; font-size: 17px; font-weight: 700; outline: none; direction: ltr; -moz-appearance: textfield; }
 .setgrid input::placeholder { color: #5f6d72; font-weight: 500; }
