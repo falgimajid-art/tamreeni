@@ -810,14 +810,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 
 /* ---------- اختيار تمرين: مرتّب حسب العضلة الأساسية، ومعه علامة ! لمعاينة الطريقة ---------- */
 function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, browse = false }) {
-  let q = '', m = muscle, grp = '';
+  let q = '', m = muscle, grp = '', gearF = '';
   if (m) grp = (MUSCLE_GROUPS.find(g => g[1].includes(m)) || [''])[0];
   const s = openSheet({ title, tall: true, body: '' });
   const row = e => `<div class="ex-row pick" data-id="${e.id}">
     <button class="pick-main" data-add="${e.id}">${thumb(e.id)}<div class="info"><div class="nm">${esc(e.en)}</div><div class="nm-ar">${esc(e.ar)}</div><div class="meta">${esc(e.gear)}${e.sec.length ? ' · ثانوي: ' + e.sec.slice(0, 2).map(k => MUSCLES[k]).join('، ') : ''}</div></div></button>
     ${browse ? '' : `<button class="info-btn" data-i="${e.id}" aria-label="معاينة طريقة التمرين">!</button>`}</div>`;
   function draw() {
-    const match = e => !q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase());
+    const match = e => (!q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase())) && (!gearF || e.gear === gearF);
     const groups = MUSCLE_GROUPS.filter(g => !grp || g[0] === grp);
     let html = '';
     groups.forEach(([gn, ms]) => ms.filter(k => !m || k === m).forEach(k => {
@@ -828,6 +828,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
     const musOfGrp = grp ? MUSCLE_GROUPS.find(g => g[0] === grp)[1] : [];
     s.body.innerHTML = `<div class="row" style="margin-bottom:10px"><div class="search">${ic('search')}<input id="pq" placeholder="ابحث عن تمرين" value="${esc(q)}"></div></div>
       <div class="chips"><button class="chip ${!grp ? 'on' : ''}" data-g="">الكل</button>${MUSCLE_GROUPS.map(g => `<button class="chip ${grp === g[0] ? 'on' : ''}" data-g="${g[0]}">${g[0]}</button>`).join('')}</div>
+      <div class="chips">${['', 'جهاز', 'دمبل', 'بار', 'كيبل', 'سميث', 'وزن الجسم'].map(g => `<button class="chip sm gear ${gearF === g ? 'on' : ''}" data-gf="${g}">${g || 'كل الأدوات'}</button>`).join('')}</div>
       ${musOfGrp.length > 1 ? `<div class="chips"><button class="chip sm ${!m ? 'on' : ''}" data-m="">كل ${grp}</button>${musOfGrp.map(k => `<button class="chip sm ${m === k ? 'on' : ''}" data-m="${k}">${MUSCLES[k]}</button>`).join('')}</div>` : ''}
       <p class="small muted" style="margin:2px 2px 10px">${browse ? 'كل تمرين تحت عضلته الأساسية. اضغط التمرين لرؤية طريقته وروابط الشرح.' : 'كل تمرين يظهر تحت عضلته الأساسية. اضغط <b class="info-hint">!</b> لمعاينة طريقة التمرين قبل إضافته.'}</p>
       ${html || '<div class="empty">ما فيه نتائج</div>'}`;
@@ -835,6 +836,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
     inp.oninput = () => { q = inp.value; const pos = inp.selectionStart; draw(); const n = $('#pq', s.body); n.focus(); n.setSelectionRange(pos, pos); };
     $$('[data-g]', s.body).forEach(b => b.onclick = () => { grp = b.dataset.g; m = ''; draw(); });
     $$('[data-m]', s.body).forEach(b => b.onclick = () => { m = b.dataset.m; draw(); });
+    $$('[data-gf]', s.body).forEach(b => b.onclick = () => { gearF = b.dataset.gf; draw(); });
     $$('[data-add]', s.body).forEach(b => b.onclick = () => { if (browse) return openExercise(b.dataset.add); s.close(); onPick(b.dataset.add); });
     $$('[data-i]', s.body).forEach(b => b.onclick = () => openExercise(b.dataset.i, 'info', { onAdd: () => { s.close(); onPick(b.dataset.i); } }));
   }
