@@ -70,7 +70,7 @@ function toast(msg) {
 /* ================= الحالة ================= */
 const KEY = 'tamreeni.v1';
 function defaults() {
-  return { v: 1, name: '', mine: ['ul101'], active: 'ul101', next: {}, custom: [], overrides: {}, logs: [], weight: [], body: {}, settings: { sound: true }, activeWorkout: null };
+  return { v: 1, name: '', mine: ['ul101'], active: 'ul101', next: {}, custom: [], overrides: {}, logs: [], weight: [], body: {}, settings: { sound: true }, activeWorkout: null, customEx: [], notes: {} };
 }
 let S = (() => {
   try { const r = localStorage.getItem(KEY); if (r) return Object.assign(defaults(), JSON.parse(r)); } catch (e) {}
@@ -84,12 +84,23 @@ const getProg = id => allPrograms().find(p => p.id === id);
 const dayEx = (p, i) => S.overrides[p.id + ':' + i] || p.days[i].ex;
 const nextDay = p => Math.min(S.next[p.id] || 0, p.days.length - 1);
 const exOf = id => EXERCISES[id];
+/* تمارين أضافها المستخدم يدوياً (جهاز غير موجود في المكتبة) */
+function registerCustomEx(d) {
+  EXERCISES[d.id] = { id: d.id, en: d.name, ar: d.name, kind: 'curl', type: d.type || 'iso', gear: d.gear || 'أخرى', pri: [d.muscle], sec: d.sec || [],
+    desc: d.how || 'تمرين أضفته بنفسك.', bw: d.gear === 'وزن الجسم', img: d.id, brand: '', custom: true, photo: d.photo || '', deleted: !!d.deleted };
+}
+(S.customEx || []).forEach(registerCustomEx);
+function thumb(id, cls = '') {
+  const x = EXERCISES[id];
+  if (x && x.custom) return `<div class="thumb ${cls}">${x.photo ? `<img src="${x.photo}" alt="">` : `<span class="ph">${ic('dumbbell')}</span>`}</div>`;
+  return thumbBase(id, cls);
+}
 
 function history(exId) {
   const out = [];
   [...S.logs].sort((a, b) => b.date.localeCompare(a.date)).forEach(l => {
     const e = l.ex.find(x => x.id === exId);
-    if (e && e.sets.length) out.push({ date: l.date, sets: e.sets, log: l });
+    if (e && e.sets.length) out.push({ date: l.date, sets: e.sets, note: e.note || '', log: l });
   });
   return out;
 }
@@ -157,7 +168,7 @@ function confirmSheet(title, text, okLabel, onOk, danger = true) {
 
 /* ================= الواجهة الرئيسية ================= */
 let tab = 'home';
-const thumb = (id, cls = '') => `<div class="thumb ${cls}"><img src="img/${(EXERCISES[id] || {}).img || id}-0.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{innerHTML:figureSvg(exOf('${id}'),0)}))"></div>`;
+const thumbBase = (id, cls = '') => `<div class="thumb ${cls}"><img src="img/${(EXERCISES[id] || {}).img || id}-0.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{innerHTML:figureSvg(exOf('${id}'),0)}))"></div>`;
 
 const TABS = ['train', 'home', 'meas']; // من اليمين لليسار، والرئيسية في المنتصف
 let navDir = '';
@@ -434,8 +445,11 @@ function openExercise(id, start = 'info', opts = {}) {
     const hist = history(id);
     let html = `<div class="seg"><button data-t="info" class="${t === 'info' ? 'on' : ''}">الشرح</button><button data-t="hist" class="${t === 'hist' ? 'on' : ''}">السجل</button><button data-t="best" class="${t === 'best' ? 'on' : ''}">أفضل مجموعة</button></div>`;
     if (t === 'info') {
-      html += `<div class="fig-card" id="fig"></div><div class="small muted" style="margin:-4px 0 10px">${esc(ex.ar)} · ${esc(ex.gear)}</div>
+      html += `${ex.custom ? (ex.photo ? `<div class="fig-card"><img src="${ex.photo}" alt="" style="aspect-ratio:auto;max-height:360px;object-fit:contain"></div>` : '') : '<div class="fig-card" id="fig"></div>'}<div class="small muted" style="margin:-4px 0 10px">${esc(ex.ar)} · ${esc(ex.gear)}${ex.custom ? ' · أضفته بنفسك' : ''}</div>
         <p class="desc">${esc(ex.desc)}</p>
+        <div class="card note-card"><div class="row between"><b>📌 ملاحظتي على التمرين</b><button class="link" id="ex-note">${S.notes[id] ? 'تعديل' : 'إضافة'}</button></div>
+          <div class="small ${S.notes[id] ? '' : 'muted'}" style="margin-top:6px;white-space:pre-wrap">${S.notes[id] ? esc(S.notes[id]) : 'مثلاً: ضبط المقعد 4، أو ركّز على التمدد.'}</div></div>
+        ${ex.custom ? `<div class="row" style="margin-bottom:14px"><button class="btn sec sm" id="ex-edit" style="flex:1">${ic('pencil', 'sm')} تعديل التمرين</button><button class="btn danger sm" id="ex-del" style="flex:1">${ic('trash', 'sm')} حذف</button></div>` : ''}
         ${ex.brand ? `<p class="small muted" style="margin:-6px 0 14px;line-height:1.7">الصور توضيحية لجهاز مشابه (لا نستخدم صور ${ex.brand} الأصلية). شكل الجهاز عندك قد يختلف قليلاً، واضبط المقعد والمقابض حسب جسمك.</p>` : ''}
         <div class="yt">${ytLinks(ex).map(l => `<a href="${l.url}" target="_blank" rel="noopener"><span class="play"></span>${l.label}</a>`).join('')}</div>
         <div class="body-card">${anatomyHtml(ex.pri, ex.sec)}</div>
@@ -447,8 +461,8 @@ function openExercise(id, start = 'info', opts = {}) {
         let d = '';
         if (prev) { const up = e1rm(b.w, b.r) >= e1rm(prev.w, prev.r); d = `<span class="delta ${up ? 'up' : 'down'}">${setTxt(b)} ${up ? '↑' : '↓'}</span>`; } else d = `<span class="delta">${setTxt(b)}</span>`;
         return `<div class="hist"><div class="hist-head"><div><b style="font-size:17px">${fDay(h.date)}</b><div class="small muted">${fWd(h.date)}</div></div>${d}</div>
-          <div class="set-table"><span class="h">الجلسة</span><span class="h">الوزن</span><span class="h">التكرارات</span><span class="h">RIR</span>
-          ${h.sets.map((x, k) => `<span class="numdot" style="margin:auto">${k + 1}</span><div class="box">${fmtN(x.w)} <small>kg</small></div><div class="box">${fmtN(x.r)}</div><span class="muted">${x.rir === '' || x.rir == null ? '-' : x.rir}</span>`).join('')}</div></div>`;
+          <div class="set-table"><span class="h">الجلسة</span><span class="h">الوزن</span><span class="h">التكرارات</span>
+          ${h.sets.map((x, k) => `<span class="numdot" style="margin:auto">${k + 1}</span><div class="box">${fmtN(x.w)} <small>kg</small></div><div class="box">${fmtN(x.r)}</div>`).join('')}</div>${h.note ? `<div class="small" style="margin-top:10px;color:var(--sand)">📝 ${esc(h.note)}</div>` : ''}</div>`;
       }).join('') : `<div class="empty">${ic('list')}لا يوجد سجل بعد. أنجز هذا التمرين في جلسة وسيظهر هنا.</div>`;
     } else {
       const all = hist.flatMap(h => h.sets), best = bestOf(all);
@@ -462,6 +476,11 @@ function openExercise(id, start = 'info', opts = {}) {
     s.set(html, false);
     $$('[data-t]', s.body).forEach(b => b.onclick = () => { t = b.dataset.t; draw(); });
     const f = $('#fig', s.body); if (f) animatePhoto(f, ex);
+    $('#ex-note', s.body)?.addEventListener('click', () => openNoteSheet(id, null, () => draw()));
+    $('#ex-edit', s.body)?.addEventListener('click', () => openCustomEx({ id, onDone: () => draw() }));
+    $('#ex-del', s.body)?.addEventListener('click', () => confirmSheet('حذف التمرين؟', 'يختفي من القوائم، لكن سجل أوزانك السابق عليه يبقى محفوظاً.', 'حذف', () => {
+      const d = S.customEx.find(x => x.id === id); if (d) d.deleted = true; registerCustomEx(d); save(); render(); s.close(); toast('تم حذف التمرين');
+    }));
   }
   draw();
 }
@@ -514,7 +533,7 @@ function openWorkout() {
   clearInterval(tick); tick = setInterval(onTick, 250); onTick();
 }
 function closeWorkoutView() {
-  $('#wk')?.remove(); document.body.style.overflow = ''; clearInterval(tick); try { wakeLock?.release(); } catch (e) {} wakeLock = null; if (!S.activeWorkout) stopRestAudio(); render();
+  $('#wk')?.remove(); document.body.style.overflow = ''; clearInterval(tick); try { wakeLock?.release(); } catch (e) {} wakeLock = null; render();
 }
 function drawWorkout() {
   const aw = S.activeWorkout; const body = $('#wk-body'); if (!body) return;
@@ -522,16 +541,16 @@ function drawWorkout() {
   body.innerHTML = aw.ex.map((e, xi) => {
     const ex = exOf(e.id), last = lastSets(e.id), done = e.sets.every(s => s.done);
     return `<div class="wk-ex ${done ? 'done' : ''}"><div class="hd" data-xi="${xi}">${thumb(e.id)}
-      <div class="grow"><div class="nm">${esc(ex.en)}</div><div class="small muted">${e.n} × ${esc(e.reps)} · راحة ${fmtTime(e.rest)} د</div>${last ? `<div class="small muted ltr" style="direction:rtl">آخر مرة: ${last.map(x => fmtN(x.w) + '×' + fmtN(x.r)).join(' · ')}</div>` : '<div class="small muted">أول مرة لك على هذا التمرين</div>'}${e.from ? `<div class="small" style="color:var(--accent)">بدل ${esc((exOf(e.from) || {}).ar || '')} · حُفظت ${e.fromN} مجموعات منه</div>` : ''}</div>
+      <div class="grow"><div class="nm">${esc(ex.en)}</div><div class="small muted">${e.n} × ${esc(e.reps)} · راحة ${fmtTime(e.rest)} د</div>${last ? `<div class="small muted ltr" style="direction:rtl">آخر مرة: ${last.map(x => fmtN(x.w) + '×' + fmtN(x.r)).join(' · ')}</div>` : '<div class="small muted">أول مرة لك على هذا التمرين</div>'}${e.from ? `<div class="small" style="color:var(--accent)">بدل ${esc((exOf(e.from) || {}).ar || '')} · حُفظت ${e.fromN} مجموعات منه</div>` : ''}${noteLines(e)}</div>
       <button class="icon-btn" data-swx="${xi}" aria-label="استبدال التمرين" style="width:38px;height:38px">${ic('swap', 'sm')}</button>
+      <button class="icon-btn" data-note="${xi}" aria-label="ملاحظة" style="width:38px;height:38px;${e.note || S.notes[e.id] ? 'color:var(--sand)' : ''}">${ic('pencil', 'sm')}</button>
       <button class="icon-btn" data-info="${e.id}" aria-label="شرح التمرين" style="width:38px;height:38px">${ic('chart', 'sm')}</button></div>
-      <div class="setgrid"><span class="h">#</span><span class="h">الوزن kg</span><span class="h">التكرار</span><span class="h">RIR</span><span></span><span></span>
+      <div class="setgrid"><span class="h">#</span><span class="h">الوزن kg</span><span class="h">التكرار</span><span></span><span></span>
       ${e.sets.map((s, si) => {
         const pv = last ? (last[si] || last[last.length - 1]) : null, lo = parseInt(e.reps) || '';
         return `${`<span class="numdot" style="margin:auto">${si + 1}</span>`}
         <div class="${s.done ? 'done' : ''}"><input inputmode="decimal" data-f="w" data-xi="${xi}" data-si="${si}" value="${esc(s.w)}" placeholder="${pv ? fmtN(pv.w) : (ex.bw ? '0' : '-')}"></div>
         <div class="${s.done ? 'done' : ''}"><input inputmode="numeric" data-f="r" data-xi="${xi}" data-si="${si}" value="${esc(s.r)}" placeholder="${pv ? fmtN(pv.r) : lo}"></div>
-        <div class="${s.done ? 'done' : ''}"><input inputmode="numeric" data-f="rir" data-xi="${xi}" data-si="${si}" value="${esc(s.rir)}" placeholder="-"></div>
         <button class="chk ${s.done ? 'on' : ''}" data-chk="${xi}:${si}" aria-label="إنجاز المجموعة">${ic('check')}</button>
         <button class="del-set" data-delset="${xi}:${si}" aria-label="حذف المجموعة" ${e.sets.length <= 1 ? 'disabled' : ''}>${ic('trash', 'sm')}</button>`;
       }).join('')}</div>
@@ -549,6 +568,7 @@ function drawWorkout() {
   });
   $$('[data-add]', body).forEach(b => b.onclick = () => { aw.ex[b.dataset.add].sets.push({ w: '', r: '', rir: '', done: false }); save(); drawWorkout(); });
   $$('[data-info]', body).forEach(b => b.onclick = () => openExercise(b.dataset.info));
+  $$('[data-note]', body).forEach(b => b.onclick = () => openNoteSheet(aw.ex[+b.dataset.note].id, +b.dataset.note, () => drawWorkout()));
   $$('[data-swx]', body).forEach(b => b.onclick = () => swapWorkoutExercise(+b.dataset.swx));
 }
 function toggleSet(xi, si) {
@@ -562,7 +582,7 @@ function toggleSet(xi, si) {
   if (isNaN(w) || isNaN(r)) { toast('اكتب الوزن والتكرارات أولاً'); return; }
   s.w = fmtN(w); s.r = fmtN(r); s.done = true;
   const allDone = aw.ex.every(x => x.sets.every(q => q.done));
-  if (!allDone) { aw.rest = { end: Date.now() + e.rest * 1000, total: e.rest, fired: false }; startRestAudio(e.rest); } else { aw.rest = null; stopRestAudio(); }
+  if (!allDone) { aw.rest = { end: Date.now() + e.rest * 1000, total: e.rest, fired: false }; } else { aw.rest = null; }
   save(); drawWorkout(); onTick();
   if (allDone) toast('أنهيت كل المجموعات! اضغط إنهاء');
 }
@@ -572,15 +592,13 @@ function onTick() {
   const box = $('#wk-rest'); const r = aw.rest;
   if (!r) { if (box.innerHTML) box.innerHTML = ''; return; }
   const left = (r.end - Date.now()) / 1000;
-  if (left <= 0 && !r.fired) { r.fired = true; save(); if (!restAudioActive()) beep(); else { try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} } }
+  if (left <= 0 && !r.fired) { r.fired = true; save(); beep(); }
   const over = left <= 0;
   if (!box.firstChild) {
     box.innerHTML = `<div class="rest-bar"><button class="adj" data-a="-15">-15</button><div class="grow" style="text-align:center"><div class="small" id="rb-l" style="opacity:.7">وقت الراحة</div><div class="time" id="rb-t" style="margin:auto"></div></div><button class="adj" data-a="15">+15</button><button class="adj" data-a="skip">${over ? 'متابعة' : 'تخطي'}</button><div class="prog"><i id="rb-p"></i></div></div>`;
     $$('[data-a]', box).forEach(b => b.onclick = () => {
-      const a = b.dataset.a; if (a === 'skip') { aw.rest = null; box.innerHTML = ''; save(); stopRestAudio(); return; }
-      r.end += +a * 1000; r.total = Math.max(5, r.total + +a); r.fired = r.end <= Date.now(); save(); onTick();
-      if (!r.fired) startRestAudio(Math.max(1, (r.end - Date.now()) / 1000), r.total); else stopRestAudio();
-    });
+      const a = b.dataset.a; if (a === 'skip') { aw.rest = null; box.innerHTML = ''; save(); return; }
+      r.end += +a * 1000; r.total = Math.max(5, r.total + +a); r.fired = r.end <= Date.now(); save(); onTick();    });
   }
   const bar = $('.rest-bar', box); bar.classList.toggle('over', over);
   $('#rb-t').textContent = over ? 'انتهت!' : fmtTime(Math.ceil(left));
@@ -594,12 +612,13 @@ function finishWorkout() {
   const aw = S.activeWorkout;
   const conv = s => ({ w: num(s.w) || 0, r: num(s.r) || 0, rir: s.rir === '' ? '' : num(s.rir) });
   const doneMap = new Map(); // التمارين المستبدلة تبقى محفوظة بأوزانها تحت اسمها الأصلي
-  [...(aw.kept || []).map(k => ({ id: k.id, sets: k.sets })), ...aw.ex.map(e => ({ id: e.id, sets: e.sets.filter(s => s.done) }))].forEach(e => {
-    if (!e.sets.length) return; const cur = doneMap.get(e.id) || { id: e.id, sets: [] }; cur.sets.push(...e.sets.map(conv)); doneMap.set(e.id, cur);
+  [...(aw.kept || []).map(k => ({ id: k.id, sets: k.sets, note: k.note })), ...aw.ex.map(e => ({ id: e.id, sets: e.sets.filter(s => s.done), note: e.note }))].forEach(e => {
+    if (!e.sets.length) return; const cur = doneMap.get(e.id) || { id: e.id, sets: [], note: '' }; cur.sets.push(...e.sets.map(conv));
+    if (e.note) cur.note = [cur.note, e.note].filter(Boolean).join(' · '); doneMap.set(e.id, cur);
   });
   const done = [...doneMap.values()];
   if (!done.length) {
-    return confirmSheet('لا توجد مجموعات منجزة', 'لم تسجّل أي مجموعة. هل تريد إلغاء هذا التمرين؟', 'إلغاء التمرين', () => { S.activeWorkout = null; save(); stopRestAudio(); closeWorkoutView(); });
+    return confirmSheet('لا توجد مجموعات منجزة', 'لم تسجّل أي مجموعة. هل تريد إلغاء هذا التمرين؟', 'إلغاء التمرين', () => { S.activeWorkout = null; save(); closeWorkoutView(); });
   }
   const dur = (Date.now() - aw.start) / 1000;
   const vol = done.reduce((a, e) => a + e.sets.reduce((b, s) => b + s.w * s.r, 0), 0);
@@ -617,7 +636,7 @@ function finishWorkout() {
   $('#fn-save', s.foot).onclick = () => {
     S.logs.push({ id: uid(), date: new Date(aw.start).toISOString(), progId: aw.progId, dayIdx: aw.dayIdx, dayName: aw.dayName, dur, ex: done });
     const p = getProg(aw.progId); if (p) S.next[p.id] = (aw.dayIdx + 1) % p.days.length;
-    S.activeWorkout = null; save(); stopRestAudio(); s.close(); closeWorkoutView(); openSaved(aw.progId);
+    S.activeWorkout = null; save(); s.close(); closeWorkoutView(); openSaved(aw.progId);
   };
 }
 
@@ -788,7 +807,6 @@ function openSettings() {
         <div class="small muted" style="margin-top:6px">${PALETTES[getTheme().accent].n}</div></div>
       <div class="field"><label>الخلفية</label><div class="seg dark" style="margin-bottom:0">${Object.entries(MODES).map(([k, m]) => `<button data-mode="${k}" class="${getTheme().mode === k ? 'on' : ''}">${m.n}</button>`).join('')}</div></div>
       <button class="menu-item" id="st-snd">${ic('bolt')}<span class="grow">صوت انتهاء الراحة<small>تنبيه صوتي واهتزاز عند انتهاء العدّاد</small></span><b style="color:${S.settings.sound ? 'var(--accent)' : 'var(--muted)'}">${S.settings.sound ? 'مفعّل' : 'متوقف'}</b></button>
-      <button class="menu-item" id="st-bg">${ic('clock')}<span class="grow">راحة بالخلفية<small>صوت ينبهك عند انتهاء الراحة حتى لو الجوال مقفل (يظهر عداد على شاشة القفل)</small></span><b style="color:${S.settings.bgRest === false ? 'var(--muted)' : 'var(--accent)'}">${S.settings.bgRest === false ? 'متوقف' : 'مفعّل'}</b></button>
       <button class="menu-item" id="st-exp">${ic('download')}<span>نسخة احتياطية<small>تنزيل ملف بكل بياناتك (احفظه في الملفات)</small></span></button>
       <label class="menu-item" style="cursor:pointer">${ic('upload')}<span>استعادة نسخة<small>اختر ملف النسخة الاحتياطية</small></span><input type="file" id="st-imp" accept="application/json,.json" hidden></label>
       <button class="menu-item danger" id="st-rst">${ic('trash')}<span>مسح كل البيانات<small style="color:var(--rose);opacity:.7">لا يمكن التراجع</small></span></button>
@@ -800,7 +818,6 @@ function openSettings() {
     $$('[data-pal]', b).forEach(x => x.onclick = () => setTheme({ accent: x.dataset.pal }));
     $$('[data-mode]', b).forEach(x => x.onclick = () => setTheme({ mode: x.dataset.mode }));
     $('#st-snd', b).onclick = () => { S.settings.sound = !S.settings.sound; save(); if (S.settings.sound) { unlockAudio(); beep(); } draw(); };
-    $('#st-bg', b).onclick = () => { S.settings.bgRest = S.settings.bgRest === false; save(); if (S.settings.bgRest === false) stopRestAudio(); draw(); };
     $('#st-exp', b).onclick = () => {
       const blob = new Blob([JSON.stringify(S)], { type: 'application/json' }), a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = 'tamreeni-backup-' + todayKey() + '.json'; document.body.appendChild(a); a.click(); a.remove(); toast('تم تجهيز النسخة الاحتياطية');
@@ -840,7 +857,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
     <button class="pick-main" data-add="${e.id}">${thumb(e.id)}<div class="info"><div class="nm">${esc(e.en)}</div><div class="nm-ar">${esc(e.ar)}</div><div class="meta">${esc(e.gear)}${e.sec.length ? ' · ثانوي: ' + e.sec.slice(0, 2).map(k => MUSCLES[k]).join('، ') : ''}${(() => { const l = lastSets(e.id); return l ? `<br><span class="ltr" style="color:var(--accent)">آخر مرة: ${setTxt(bestOf(l))}</span>` : ''; })()}</div></div></button>
     ${browse ? '' : `<button class="info-btn" data-i="${e.id}" aria-label="معاينة طريقة التمرين">!</button>`}</div>`;
   function draw() {
-    const match = e => (!q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase())) && (!gearF || (gearF === 'Technogym' ? e.brand === 'Technogym' : e.gear === gearF));
+    const match = e => !e.deleted && (!q || (e.en + ' ' + e.ar).toLowerCase().includes(q.toLowerCase())) && (!gearF || (gearF === 'Technogym' ? e.brand === 'Technogym' : e.gear === gearF));
     const groups = MUSCLE_GROUPS.filter(g => !grp || g[0] === grp);
     let html = '';
     groups.forEach(([gn, ms]) => ms.filter(k => !m || k === m).forEach(k => {
@@ -853,6 +870,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
       <div class="chips"><button class="chip ${!grp ? 'on' : ''}" data-g="">الكل</button>${MUSCLE_GROUPS.map(g => `<button class="chip ${grp === g[0] ? 'on' : ''}" data-g="${g[0]}">${g[0]}</button>`).join('')}</div>
       <div class="chips">${['', 'Technogym', 'جهاز', 'دمبل', 'بار', 'كيبل', 'سميث', 'وزن الجسم'].map(g => `<button class="chip sm gear ${gearF === g ? 'on' : ''}" data-gf="${g}">${g || 'كل الأدوات'}</button>`).join('')}</div>
       ${musOfGrp.length > 1 ? `<div class="chips"><button class="chip sm ${!m ? 'on' : ''}" data-m="">كل ${grp}</button>${musOfGrp.map(k => `<button class="chip sm ${m === k ? 'on' : ''}" data-m="${k}">${MUSCLES[k]}</button>`).join('')}</div>` : ''}
+      <button class="btn ghost sm" id="pk-new" style="width:100%;margin:0 0 10px">${ic('plus', 'sm')} الجهاز أو التمرين مو موجود؟ أضفه بنفسك</button>
       <p class="small muted" style="margin:2px 2px 10px">${browse ? 'كل تمرين تحت عضلته الأساسية. اضغط التمرين لرؤية طريقته وروابط الشرح.' : 'كل تمرين يظهر تحت عضلته الأساسية. اضغط <b class="info-hint">!</b> لمعاينة طريقة التمرين قبل إضافته.'}</p>
       ${html || '<div class="empty">ما فيه نتائج</div>'}`;
     const inp = $('#pq', s.body);
@@ -860,6 +878,7 @@ function openPicker({ muscle = '', title = 'اختر تمريناً', onPick, br
     $$('[data-g]', s.body).forEach(b => b.onclick = () => { grp = b.dataset.g; m = ''; draw(); });
     $$('[data-m]', s.body).forEach(b => b.onclick = () => { m = b.dataset.m; draw(); });
     $$('[data-gf]', s.body).forEach(b => b.onclick = () => { gearF = b.dataset.gf; draw(); });
+    $('#pk-new', s.body).onclick = () => openCustomEx({ muscle: m, onDone: id => { if (browse) { draw(); openExercise(id); } else { s.close(); onPick(id); } } });
     $$('[data-add]', s.body).forEach(b => b.onclick = () => { if (browse) return openExercise(b.dataset.add); s.close(); onPick(b.dataset.add); });
     $$('[data-i]', s.body).forEach(b => b.onclick = () => openExercise(b.dataset.i, 'info', { onAdd: () => { s.close(); onPick(b.dataset.i); } }));
   }
