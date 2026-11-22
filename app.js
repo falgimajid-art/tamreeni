@@ -159,7 +159,7 @@ function confirmSheet(title, text, okLabel, onOk, danger = true) {
 let tab = 'home';
 const thumb = (id, cls = '') => `<div class="thumb ${cls}"><img src="img/${(EXERCISES[id] || {}).img || id}-0.jpg" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{innerHTML:figureSvg(exOf('${id}'),0)}))"></div>`;
 
-const TABS = ['home', 'train', 'meas'];
+const TABS = ['train', 'home', 'meas']; // من اليمين لليسار، والرئيسية في المنتصف
 let navDir = '';
 function render() {
   const v = $('#view');
@@ -241,11 +241,11 @@ function viewHome(v) {
     <div class="card">
       <div class="row between"><h2>${ic('dumbbell')} تمرينك</h2><span class="small muted">${wk} من ${p.days.length} هذا الأسبوع</span></div>
       <div class="row between" style="margin-top:4px"><div class="grow"><div style="font-weight:700;font-size:18px;line-height:1.35">${esc(p.name)}</div>
-        <div class="small muted" style="margin-top:3px">اليوم ${di + 1} من ${p.days.length} · ${esc(p.days[di].name)}</div></div>
+        <div class="small muted" style="margin-top:3px">تمرينك القادم: اليوم ${di + 1} من ${p.days.length} · <b class="ltr" style="color:var(--text)">${esc(p.days[di].name)}</b></div></div>
         <span class="pill" style="flex:none">~${mins} د · ${exs.length} تمارين</span></div>
       <div class="thumbs">${exs.slice(0, 3).map(e => thumb(e[0], 'lg')).join('')}${exs.length > 3 ? `<div class="thumb lg more">+${exs.length - 3}</div>` : ''}</div>
       <button class="btn" id="b-start">${ic('play')} ${resume ? 'متابعة التمرين' : 'بدء التمرين'}</button>
-      <button class="btn ghost" style="margin-top:8px" id="b-prev">معاينة اليوم</button>
+      <div class="row" style="margin-top:8px"><button class="btn ghost" id="b-prev">معاينة اليوم</button><button class="btn ghost" id="b-skip" aria-label="تخطي هذا اليوم والانتقال لليوم التالي">${ic('arrowr')} تخطي اليوم</button></div>
     </div>
     <div class="quick">
       <button class="qtile" id="q-train"><span class="qi">${ic('list')}</span><span><b>جداولي</b><small>إدارة وتعديل</small></span></button>
@@ -254,7 +254,7 @@ function viewHome(v) {
       <button class="qtile" id="q-meas"><span class="qi">${ic('ruler')}</span><span><b>القياسات</b><small>الوزن والجسم</small></span></button>
     </div>
     <div class="card"><h2>${ic('clock')} أسبوعك</h2><div class="row">${dots}</div></div>
-    ${lastLog ? `<div class="card"><h2>${ic('bolt')} آخر جلسة</h2>
+    ${lastLog ? `<div class="card"><div class="row between"><h2>${ic('bolt')} آخر جلسة</h2><button class="link" id="b-hist">السجل ${ic('chevl', 'sm')}</button></div>
       <div class="row between"><div><b>${esc(lastLog.dayName)}</b><div class="small muted">${fWd(lastLog.date)}، ${fDay(lastLog.date)}</div></div>
       <div class="small muted" style="text-align:end">${fmtDur(lastLog.dur)}<br>${lastLog.ex.reduce((a, e) => a + e.sets.length, 0)} مجموعة</div></div></div>` : ''}
     <div class="card" id="c-w"><div class="row between"><h2>${ic('ruler')} الوزن</h2><button class="icon-btn" style="width:36px;height:36px" id="b-addw">${ic('plus', 'sm')}</button></div>
@@ -268,6 +268,8 @@ function viewHome(v) {
   $('#q-stats', v).onclick = openStats; $('#q-lib', v).onclick = () => openPicker({ title: 'مكتبة التمارين', browse: true });
   $('#b-start', v).onclick = () => startWorkout(p.id, di);
   $('#b-prev', v).onclick = () => openPreview(p.id, di);
+  $('#b-skip', v).onclick = () => skipDay(p.id);
+  $('#b-hist', v)?.addEventListener('click', openHistory);
   $('#b-addw', v).onclick = () => addWeightSheet();
   $('#b-stats', v).onclick = openStats;
 }
@@ -288,13 +290,13 @@ function viewTrain(v) {
   const lib = BUILTIN_PROGRAMS.filter(p => !S.mine.includes(p.id));
   v.innerHTML = `<div class="screen">
     <div class="topbar"><h1>التمرين</h1><div class="top-actions">
-      <button class="icon-btn" id="b-stats">${ic('chart')}</button><button class="icon-btn" id="b-manage">${ic('more')}</button></div></div>
+      <button class="icon-btn" id="b-hist2" aria-label="سجل التمارين">${ic('clock')}</button><button class="icon-btn" id="b-stats">${ic('chart')}</button><button class="icon-btn" id="b-manage">${ic('more')}</button></div></div>
     <div class="sec-title" style="margin-top:4px"><h2>جداولك</h2><button class="btn sm" id="b-new" style="background:var(--accent-soft);color:var(--accent)">${ic('plus', 'sm')} جدول جديد</button></div>
     <div class="carousel">${mine.map(p => progCard(p, p.id === S.active)).join('') || '<div class="empty grow">لا توجد جداول</div>'}</div>
     <div class="sec-title"><h2>جداول جاهزة</h2><button class="link" id="b-lib">استعرض الكل ${ic('chevl', 'sm')}</button></div>
     <div class="carousel">${(lib.length ? lib : BUILTIN_PROGRAMS).map(libCard).join('')}</div>
   </div>`;
-  $('#b-stats', v).onclick = openStats; $('#b-manage', v).onclick = openManage;
+  $('#b-stats', v).onclick = openStats; $('#b-manage', v).onclick = openManage; $('#b-hist2', v).onclick = openHistory;
   $('#b-new', v).onclick = () => openEditor(null); $('#b-lib', v).onclick = openLibrary;
   $$('[data-go]', v).forEach(b => b.onclick = () => { const p = getProg(b.dataset.go); S.active = p.id; save(); openPreview(p.id, nextDay(p)); });
   $$('[data-edit]', v).forEach(b => b.onclick = () => openEditor(b.dataset.edit));
@@ -373,8 +375,9 @@ function openProgPreview(pid) {
 /* ---------- معاينة التمرين ---------- */
 function openPreview(pid, di) {
   const p = getProg(pid); let edit = false;
-  const s = openSheet({ title: 'معاينة التمرين', tall: true, body: '', foot: '<button class="btn" id="pv-go">' + ic('play') + ' بدء التمرين</button>' });
+  const s = openSheet({ title: 'معاينة التمرين', tall: true, body: '', foot: `<div class="row">${di === nextDay(p) ? `<button class="btn sec" id="pv-skip" style="flex:none;width:auto;padding-inline:16px">${ic('arrowr')} تخطي</button>` : ''}<button class="btn" id="pv-go">${ic('play')} بدء التمرين</button></div>` });
   $('#pv-go', s.foot).onclick = () => { s.close(); startWorkout(pid, di); };
+  $('#pv-skip', s.foot)?.addEventListener('click', () => { s.close(); skipDay(pid); });
   function draw() {
     const exs = dayEx(p, di);
     const pri = [...new Set(exs.flatMap(e => exOf(e[0]).pri))], sec = [...new Set(exs.flatMap(e => exOf(e[0]).sec))].filter(m => !pri.includes(m));
@@ -605,7 +608,7 @@ function finishWorkout() {
   $('#fn-save', s.foot).onclick = () => {
     S.logs.push({ id: uid(), date: new Date(aw.start).toISOString(), progId: aw.progId, dayIdx: aw.dayIdx, dayName: aw.dayName, dur, ex: done });
     const p = getProg(aw.progId); if (p) S.next[p.id] = (aw.dayIdx + 1) % p.days.length;
-    S.activeWorkout = null; save(); s.close(); closeWorkoutView(); toast('أحسنت! تم حفظ التمرين 💪');
+    S.activeWorkout = null; save(); s.close(); closeWorkoutView(); openSaved(aw.progId);
   };
 }
 
@@ -771,6 +774,10 @@ function openSettings() {
   const s = openSheet({ title: 'الإعدادات', body: '' });
   function draw() {
     s.set(`<div class="field"><label>اسمك</label><div class="name-row"><input class="inp" id="nm" value="${esc(S.name)}" placeholder="اكتب اسمك" maxlength="24" autocomplete="off"><button class="btn" id="nm-save" disabled>حفظ</button></div></div>
+      <div class="field"><label>لون التطبيق</label>
+        <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="sw ${getTheme().accent === k ? 'on' : ''}" data-pal="${k}" aria-label="${p.n}" style="--c:${p.a}"><span></span></button>`).join('')}</div>
+        <div class="small muted" style="margin-top:6px">${PALETTES[getTheme().accent].n}</div></div>
+      <div class="field"><label>الخلفية</label><div class="seg dark" style="margin-bottom:0">${Object.entries(MODES).map(([k, m]) => `<button data-mode="${k}" class="${getTheme().mode === k ? 'on' : ''}">${m.n}</button>`).join('')}</div></div>
       <button class="menu-item" id="st-snd">${ic('bolt')}<span class="grow">صوت انتهاء الراحة<small>تنبيه صوتي واهتزاز عند انتهاء العدّاد</small></span><b style="color:${S.settings.sound ? 'var(--accent)' : 'var(--muted)'}">${S.settings.sound ? 'مفعّل' : 'متوقف'}</b></button>
       <button class="menu-item" id="st-exp">${ic('download')}<span>نسخة احتياطية<small>تنزيل ملف بكل بياناتك (احفظه في الملفات)</small></span></button>
       <label class="menu-item" style="cursor:pointer">${ic('upload')}<span>استعادة نسخة<small>اختر ملف النسخة الاحتياطية</small></span><input type="file" id="st-imp" accept="application/json,.json" hidden></label>
@@ -779,6 +786,9 @@ function openSettings() {
       <p class="credit">المصادر: صور التمارين من مشروع free-exercise-db (ترخيص Unlicense، ملك عام). مخططات التشريح العضلي من مشروع wger (ترخيص CC BY-SA 3.0).</p>`);
     const b = s.body;
     wireNameInput(b, () => draw());
+    const setTheme = patch => { S.settings.theme = Object.assign({}, getTheme(), patch); save(); applyTheme(); draw(); render(); };
+    $$('[data-pal]', b).forEach(x => x.onclick = () => setTheme({ accent: x.dataset.pal }));
+    $$('[data-mode]', b).forEach(x => x.onclick = () => setTheme({ mode: x.dataset.mode }));
     $('#st-snd', b).onclick = () => { S.settings.sound = !S.settings.sound; save(); if (S.settings.sound) { unlockAudio(); beep(); } draw(); };
     $('#st-exp', b).onclick = () => {
       const blob = new Blob([JSON.stringify(S)], { type: 'application/json' }), a = document.createElement('a');
