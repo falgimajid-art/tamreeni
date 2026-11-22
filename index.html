@@ -13,8 +13,8 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css?v=8">
-<script src="theme.js?v=8"></script>
+<link rel="stylesheet" href="style.css?v=10">
+<script src="theme.js?v=10"></script>
 </head>
 <body>
 <div id="splash" aria-hidden="true"><div class="sp-in">
@@ -22,16 +22,47 @@
     <g class="sp-bell"><path pathLength="100" d="M44 42v36"/><path pathLength="100" d="M76 42v36"/><path pathLength="100" d="M32 52v16"/><path pathLength="100" d="M88 52v16"/><path pathLength="100" d="M44 60h32"/></g></svg>
   <div class="sp-title">تمريني</div><div class="sp-sub" id="sp-sub">جاهز للتمرين</div>
 </div></div>
+<script>
+/* حارس التشغيل: لو ما اشتغل التطبيق خلال ثوانٍ يظهر خطأ واضح وأزرار إنقاذ بدل ما يعلق على الترحيب */
+(function () {
+  var errs = (window.__errs = []);
+  window.addEventListener('error', function (e) { errs.push((e.message || 'error') + (e.filename ? ' @' + e.filename.split('/').pop().split('?')[0] + ':' + e.lineno : '')); });
+  window.addEventListener('unhandledrejection', function (e) { errs.push('promise: ' + ((e.reason && e.reason.message) || e.reason)); });
+  function clean() {
+    var jobs = [];
+    try { if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })); } catch (e) {}
+    try { if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })); } catch (e) {}
+    Promise.all(jobs).then(function () { location.replace(location.pathname + '?r=' + Date.now()); }, function () { location.reload(); });
+  }
+  window.__watchdog = function () {
+    if (window.__booted) return;
+    var sp = document.getElementById('splash'); if (!sp) return;
+    var msg = errs.length ? errs.slice(0, 3).join('\n') : 'لم يكتمل تحميل ملفات التطبيق';
+    sp.innerHTML = '<div class="fatal"><h2>تعذّر تشغيل التطبيق</h2><p>بياناتك ما انمسحت. جرّب الأزرار بالترتيب:</p>' +
+      '<pre dir="ltr"></pre><button id="fx-clean">١) إعادة تحميل نظيفة</button><button id="fx-exp">٢) تنزيل نسخة من بياناتك</button><button id="fx-rst" class="d">٣) مسح بيانات التطبيق</button></div>';
+    sp.querySelector('pre').textContent = msg;
+    sp.querySelector('#fx-clean').onclick = clean;
+    sp.querySelector('#fx-exp').onclick = function () {
+      try {
+        var raw = localStorage.getItem('tamreeni.v1') || '{}', a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' })); a.download = 'tamreeni-backup.json'; document.body.appendChild(a); a.click(); a.remove();
+      } catch (e) { alert('تعذّر تجهيز النسخة'); }
+    };
+    sp.querySelector('#fx-rst').onclick = function () { if (confirm('سيُمسح كل شيء (تمارينك وقياساتك). متأكد؟')) { try { localStorage.clear(); } catch (e) {} clean(); } };
+  };
+  setTimeout(window.__watchdog, 4500);
+})();
+</script>
 <div id="app"><main id="view"></main></div>
 <nav class="tabbar"><div class="in">
   <button class="tab" data-tab="train"><span class="bubble"><svg class="ico" viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg></span>التمرين</button>
   <button class="tab" data-tab="home"><span class="bubble"><svg class="ico" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg></span>الرئيسية</button>
   <button class="tab" data-tab="meas"><span class="bubble"><svg class="ico" viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg></span>القياسات</button>
 </div></nav>
-<script src="data.js?v=8"></script>
-<script src="figures.js?v=8"></script>
-<script src="app.js?v=8"></script>
-<script src="reorder.js?v=8"></script>
-<script src="extras.js?v=8"></script>
+<script src="data.js?v=10"></script>
+<script src="figures.js?v=10"></script>
+<script src="app.js?v=10"></script>
+<script src="reorder.js?v=10"></script>
+<script src="extras.js?v=10"></script>
 </body>
 </html>

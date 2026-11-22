@@ -269,7 +269,7 @@ function viewHome(v) {
   $('#b-start', v).onclick = () => startWorkout(p.id, di);
   $('#b-prev', v).onclick = () => openPreview(p.id, di);
   $('#b-skip', v).onclick = () => skipDay(p.id);
-  $('#b-hist', v)?.addEventListener('click', openHistory);
+  $('#b-hist', v)?.addEventListener('click', () => openHistory());
   $('#b-addw', v).onclick = () => addWeightSheet();
   $('#b-stats', v).onclick = openStats;
 }
@@ -296,7 +296,7 @@ function viewTrain(v) {
     <div class="sec-title"><h2>جداول جاهزة</h2><button class="link" id="b-lib">استعرض الكل ${ic('chevl', 'sm')}</button></div>
     <div class="carousel">${(lib.length ? lib : BUILTIN_PROGRAMS).map(libCard).join('')}</div>
   </div>`;
-  $('#b-stats', v).onclick = openStats; $('#b-manage', v).onclick = openManage; $('#b-hist2', v).onclick = openHistory;
+  $('#b-stats', v).onclick = openStats; $('#b-manage', v).onclick = openManage; $('#b-hist2', v).onclick = () => openHistory();
   $('#b-new', v).onclick = () => openEditor(null); $('#b-lib', v).onclick = openLibrary;
   $$('[data-go]', v).forEach(b => b.onclick = () => { const p = getProg(b.dataset.go); S.active = p.id; save(); openPreview(p.id, nextDay(p)); });
   $$('[data-edit]', v).forEach(b => b.onclick = () => openEditor(b.dataset.edit));
@@ -506,7 +506,7 @@ function openWorkout() {
   try { navigator.wakeLock?.request('screen').then(w => wakeLock = w).catch(() => {}); } catch (e) {}
   $('#wk-min', el).onclick = closeWorkoutView;
   $('#wk-fin', el).onclick = finishWorkout;
-  $('#wk-ord', el).onclick = openWorkoutOrder;
+  $('#wk-ord', el).onclick = () => openWorkoutOrder();
   drawWorkout();
   clearInterval(tick); tick = setInterval(onTick, 250); onTick();
 }
@@ -808,6 +808,7 @@ function openSettings() {
 $$('.tab').forEach(t => t.onclick = () => go(t.dataset.tab));
 tab = 'home'; // يفتح دائماً على الرئيسية
 render();
+window.__booted = true; // يعني: اشتغل التطبيق (الحارس في index.html يتوقف)
 /* موشن الترحيب: ~1.8 ث ثم يكشف الرئيسية. اضغط عليه لتخطيه */
 (() => {
   const sp = $('#splash'); if (!sp) return;
