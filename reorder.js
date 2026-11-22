@@ -4,16 +4,18 @@
 function swapWorkoutExercise(xi, after) {
   const aw = S.activeWorkout, e = aw.ex[xi];
   const doSwap = id => {
+    // المجموعات المنجزة تبقى محفوظة بأوزانها تحت التمرين الأصلي، والتمرين الجديد يبدأ بسجله الخاص
+    const kept = e.sets.filter(s => s.done).map(s => ({ ...s }));
+    if (kept.length) { (aw.kept = aw.kept || []).push({ id: e.id, sets: kept }); }
     const n = Math.max(1, e.sets.length);
-    aw.ex[xi] = { id, n, reps: e.reps, rest: exOf(id).type === 'compound' ? Math.max(e.rest, 90) : e.rest, sets: Array.from({ length: n }, () => ({ w: '', r: '', rir: '', done: false })) };
-    save(); drawWorkout(); after && after(); toast('تم استبدال التمرين');
+    aw.ex[xi] = {
+      id, n, reps: e.reps, rest: exOf(id).type === 'compound' ? Math.max(e.rest, 90) : e.rest,
+      from: kept.length ? e.id : '', fromN: kept.length, sets: Array.from({ length: n }, () => ({ w: '', r: '', rir: '', done: false }))
+    };
+    save(); drawWorkout(); after && after();
+    toast(kept.length ? `حُفظت ${kept.length} مجموعات من ${exOf(e.id).ar}` : 'تم استبدال التمرين');
   };
-  openPicker({
-    muscle: exOf(e.id).pri[0], title: 'استبدال التمرين', onPick: id => {
-      if (e.sets.some(s => s.done)) confirmSheet('التمرين فيه مجموعات منجزة', 'سيُحذف ما سجّلته في هذا التمرين عند استبداله.', 'استبدل', () => doSwap(id));
-      else doSwap(id);
-    }
-  });
+  openPicker({ muscle: exOf(e.id).pri[0], title: 'استبدال التمرين', onPick: id => doSwap(id) });
 }
 
 function openWorkoutOrder() {
@@ -37,8 +39,10 @@ function openWorkoutOrder() {
     $$('[data-sw]', b).forEach(x => x.onclick = () => swapWorkoutExercise(+x.dataset.sw, draw));
     $$('[data-rm]', b).forEach(x => x.onclick = () => {
       const i = +x.dataset.rm; if (aw.ex.length <= 1) return toast('لازم يبقى تمرين واحد');
-      const rm = () => { aw.ex.splice(i, 1); save(); drawWorkout(); draw(); };
-      aw.ex[i].sets.some(q => q.done) ? confirmSheet('حذف تمرين فيه مجموعات منجزة؟', 'ستُحذف مجموعاته المسجّلة.', 'حذف', rm) : rm();
+      const kept = aw.ex[i].sets.filter(q => q.done).map(q => ({ ...q }));
+      if (kept.length) (aw.kept = aw.kept || []).push({ id: aw.ex[i].id, sets: kept }); // ما أنجزته يبقى محفوظاً
+      aw.ex.splice(i, 1); save(); drawWorkout(); draw();
+      if (kept.length) toast('أُزيل التمرين، ومجموعاته المنجزة تبقى في السجل');
     });
     $('#wo-add', b).onclick = () => openPicker({
       title: 'إضافة تمرين', onPick: id => {

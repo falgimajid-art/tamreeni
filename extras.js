@@ -63,3 +63,69 @@ function openHistory() {
   }
   draw();
 }
+
+/* ================= أوزاني: وزنك على كل تمرين ================= */
+function openMyWeights() {
+  let q = '';
+  const s = openSheet({ title: 'أوزاني على كل تمرين', tall: true, body: '' });
+  function draw() {
+    const ids = Object.keys(EXERCISES).map(id => ({ id, h: history(id) })).filter(x => x.h.length);
+    ids.sort((a, b) => b.h[0].date.localeCompare(a.h[0].date));
+    const list = ids.filter(x => !q || (EXERCISES[x.id].en + ' ' + EXERCISES[x.id].ar).toLowerCase().includes(q.toLowerCase()));
+    s.body.innerHTML = `<div class="row" style="margin-bottom:12px"><div class="search">${ic('search')}<input id="wq" placeholder="ابحث عن تمرين" value="${esc(q)}"></div></div>` +
+      (list.length ? list.map(x => {
+        const ex = EXERCISES[x.id], last = x.h[0], best = bestOf(x.h.flatMap(h => h.sets));
+        return `<button class="ex-row" style="width:100%" data-w="${x.id}">${thumb(x.id)}
+          <div class="info"><div class="nm">${esc(ex.en)}</div><div class="nm-ar">${esc(ex.ar)}</div>
+            <div class="meta ltr" style="direction:rtl;margin-top:3px">آخر مرة (${fDay(last.date)}): <b style="color:var(--text)">${last.sets.map(z => fmtN(z.w) + '×' + fmtN(z.r)).join(' · ')}</b></div>
+            <div class="meta ltr" style="direction:rtl;color:var(--sand)">أفضل: ${setTxt(best)} · ${x.h.length} جلسات</div></div></button>`;
+      }).join('') : `<div class="empty">${ic('trophy')}${ids.length ? 'ما فيه نتائج' : 'ما سجّلت أي تمرين بعد. بعد أول جلسة يظهر وزنك على كل تمرين هنا.'}</div>`);
+    const inp = $('#wq', s.body);
+    inp.oninput = () => { q = inp.value; const p = inp.selectionStart; draw(); const n = $('#wq', s.body); n.focus(); n.setSelectionRange(p, p); };
+    $$('[data-w]', s.body).forEach(b => b.onclick = () => openExercise(b.dataset.w, 'hist'));
+  }
+  draw();
+}
+
+/* ================= مؤقت الراحة بصوت يستمر والجوال مقفل =================
+   نبني ملفاً صوتياً فيه صمت بطول الراحة المتبقية ثم ثلاث نغمات. تشغيله كصوت يبقي التطبيق حياً في الخلفية
+   (ويظهر عداد على شاشة القفل)، والنغمات تُسمع عند انتهاء الراحة حتى لو الشاشة مقفلة. */
+let restAudio = null;
+function makeRestWav(secs) {
+  const sr = 8000, n = Math.ceil((secs + 1.6) * sr), buf = new ArrayBuffer(44 + n), v = new DataView(buf), u = new Uint8Array(buf);
+  const w = (o, t) => { for (let i = 0; i < t.length; i++) u[o + i] = t.charCodeAt(i); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+  u.fill(128, 44);
+  [[0, 784], [0.28, 784], [0.56, 1046]].forEach(([t0, f]) => {
+    const a = Math.floor((secs + t0) * sr), len = Math.floor(0.2 * sr);
+    for (let i = 0; i < len && 44 + a + i < u.length; i++) {
+      const env = Math.min(1, i / 120, (len - i) / 400);
+      u[44 + a + i] = 128 + Math.round(Math.sin(2 * Math.PI * f * i / sr) * 105 * env);
+    }
+  });
+  return new Blob([buf], { type: 'audio/wav' });
+}
+function restAudioActive() { return !!(restAudio && restAudio.el && !restAudio.el.paused && !restAudio.el.ended); }
+function stopRestAudio() {
+  if (!restAudio) return;
+  try { restAudio.el.pause(); URL.revokeObjectURL(restAudio.url); } catch (e) { /* ok */ }
+  restAudio = null;
+  try { if (navigator.mediaSession) { navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } } catch (e) { /* ok */ }
+}
+function startRestAudio(secs) {
+  stopRestAudio();
+  if (S.settings.bgRest === false) return;
+  try {
+    const url = URL.createObjectURL(makeRestWav(secs)), el = new Audio(url);
+    el.setAttribute('playsinline', ''); el.volume = 1;
+    restAudio = { el, url };
+    const p = el.play(); if (p && p.catch) p.catch(() => { /* يحتاج لمسة: نبقى على العداد العادي */ });
+    if (navigator.mediaSession) {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: 'وقت الراحة', artist: 'تمريني', album: (S.activeWorkout && S.activeWorkout.dayName) || '' });
+      navigator.mediaSession.playbackState = 'playing';
+      try { navigator.mediaSession.setPositionState({ duration: secs + 1.6, position: 0, playbackRate: 1 }); } catch (e) { /* ok */ }
+      navigator.mediaSession.setActionHandler('pause', () => { stopRestAudio(); });
+    }
+  } catch (e) { restAudio = null; }
+}
